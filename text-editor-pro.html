@@ -1595,16 +1595,61 @@ text</textarea>
         function sortLines() {
             showSortLinesDialog();
         }
+        // UTF-8 safe Base64 encoding
+        function utf8ToBase64(str) {
+            try {
+                // Use TextEncoder for modern browsers
+                if (typeof TextEncoder !== 'undefined') {
+                    const encoder = new TextEncoder();
+                    const bytes = encoder.encode(str);
+                    let binary = '';
+                    bytes.forEach(byte => binary += String.fromCharCode(byte));
+                    return btoa(binary);
+                } else {
+                    // Fallback for older browsers
+                    return btoa(unescape(encodeURIComponent(str)));
+                }
+            } catch (error) {
+                throw new Error('Failed to encode text to Base64');
+            }
+        }
+
+        function base64ToUtf8(base64) {
+            try {
+                // Add proper padding if needed
+                const paddedBase64 = base64 + "=".repeat((4 - base64.length % 4) % 4);
+                
+                // Use TextDecoder for modern browsers
+                if (typeof TextDecoder !== 'undefined') {
+                    const binary = atob(paddedBase64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    const decoder = new TextDecoder();
+                    return decoder.decode(bytes);
+                } else {
+                    // Fallback for older browsers
+                    return decodeURIComponent(escape(atob(paddedBase64)));
+                }
+            } catch (error) {
+                throw new Error('Failed to decode Base64 to text');
+            }
+        }
+
         function base64EncodeCurrentSelection() {
             const editor = document.getElementById('editorContent');
             const selectedText = getSelectedText(editor);
             if (selectedText) {
                 try {
-                    const encoded = btoa(selectedText);
+                    // Save current state to undo stack
+                    pushToUndoStack(editor.value);
+                    
+                    const encoded = utf8ToBase64(selectedText);
                     replaceSelectedText(editor, encoded);
                     markCurrentFileAsModified();
                 } catch (error) {
-                    alert('Error: Invalid text for Base64 encoding');
+                    alert('Error: Failed to encode text to Base64 - ' + error.message);
                 }
             } else {
                 alert('Please select text to encode');
@@ -1616,11 +1661,14 @@ text</textarea>
             const selectedText = getSelectedText(editor);
             if (selectedText) {
                 try {
-                    const decoded = atob(selectedText);
+                    // Save current state to undo stack
+                    pushToUndoStack(editor.value);
+                    
+                    const decoded = base64ToUtf8(selectedText);
                     replaceSelectedText(editor, decoded);
                     markCurrentFileAsModified();
                 } catch (error) {
-                    alert('Error: Invalid Base64 string');
+                    alert('Error: Failed to decode Base64 - ' + error.message);
                 }
             } else {
                 alert('Please select text to decode');
@@ -1631,6 +1679,9 @@ text</textarea>
             const editor = document.getElementById('editorContent');
             const content = editor.value;
             try {
+                // Save current state to undo stack
+                pushToUndoStack(content);
+                
                 const parsed = JSON.parse(content);
                 const formatted = JSON.stringify(parsed, null, 2);
                 editor.value = formatted;
@@ -1647,6 +1698,9 @@ text</textarea>
             const editor = document.getElementById('editorContent');
             const content = editor.value;
             try {
+                // Save current state to undo stack
+                pushToUndoStack(content);
+                
                 const formatted = formatXML(content);
                 editor.value = formatted;
                 markCurrentFileAsModified();
@@ -1820,11 +1874,14 @@ text</textarea>
             const selectedText = getSelectedText(editor);
             if (selectedText) {
                 try {
-                    const encoded = btoa(selectedText);
+                    // Save current state to undo stack
+                    pushToUndoStack(editor.value);
+                    
+                    const encoded = utf8ToBase64(selectedText);
                     replaceSelectedText(editor, encoded);
                     markCurrentFileAsModified();
                 } catch (error) {
-                    alert('Error: Invalid text for Base64 encoding');
+                    alert('Error: Failed to encode text to Base64 - ' + error.message);
                 }
             }
             hideContextMenus();
@@ -1835,11 +1892,14 @@ text</textarea>
             const selectedText = getSelectedText(editor);
             if (selectedText) {
                 try {
-                    const decoded = atob(selectedText);
+                    // Save current state to undo stack
+                    pushToUndoStack(editor.value);
+                    
+                    const decoded = base64ToUtf8(selectedText);
                     replaceSelectedText(editor, decoded);
                     markCurrentFileAsModified();
                 } catch (error) {
-                    alert('Error: Invalid Base64 string');
+                    alert('Error: Failed to decode Base64 - ' + error.message);
                 }
             }
             hideContextMenus();
@@ -2474,20 +2534,20 @@ text</textarea>
         function handleBase64Encode() {
             try {
                 const input = document.getElementById('base64Input').value;
-                const encoded = btoa(input);
+                const encoded = utf8ToBase64(input);
                 document.getElementById('base64Output').value = encoded;
             } catch (error) {
-                document.getElementById('base64Output').value = 'Error: Invalid input for Base64 encoding';
+                document.getElementById('base64Output').value = 'Error: Failed to encode text to Base64 - ' + error.message;
             }
         }
 
         function handleBase64Decode() {
             try {
                 const input = document.getElementById('base64Input').value;
-                const decoded = atob(input);
+                const decoded = base64ToUtf8(input);
                 document.getElementById('base64Output').value = decoded;
             } catch (error) {
-                document.getElementById('base64Output').value = 'Error: Invalid Base64 string';
+                document.getElementById('base64Output').value = 'Error: Failed to decode Base64 - ' + error.message;
             }
         }
 
