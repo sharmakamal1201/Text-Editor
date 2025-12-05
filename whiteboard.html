@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Text Editor matching styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+        
+        /* Theme Variables - Exact match to Text Editor */
+        :root {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #252526;
+            --bg-tertiary: #2d2d30;
+            --text-primary: #d4d4d4;
+            --text-secondary: #a0a0a0;
+            --border-color: #3c3c3c;
+            --accent-color: #61dafb;
+            --highlight-bg: #264f78;
+            
+            /* RGB versions for rgba() functions */
+            --bg-primary-rgb: 30, 30, 30;
+            --bg-secondary-rgb: 37, 37, 38;
+            --bg-tertiary-rgb: 45, 45, 48;
+            --text-primary-rgb: 212, 212, 212;
+            --text-secondary-rgb: 160, 160, 160;
+            --border-color-rgb: 60, 60, 60;
+            --accent-color-rgb: 97, 218, 251;
+        }
+        
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --bg-tertiary: #e8e8e8;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #cccccc;
+            --accent-color: #0078d4;
+            --highlight-bg: #b3d9ff;
+            
+            /* RGB versions for rgba() functions */
+            --bg-primary-rgb: 255, 255, 255;
+            --bg-secondary-rgb: 248, 248, 248;
+            --bg-tertiary-rgb: 232, 232, 232;
+            --text-primary-rgb: 51, 51, 51;
+            --text-secondary-rgb: 102, 102, 102;
+            --border-color-rgb: 204, 204, 204;
+            --accent-color-rgb: 0, 120, 212;
+        }
+
+        .app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-primary);
+        }
+
+        /* Header - Exact match to Text Editor */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-primary));
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .menu-bar {
+            display: flex;
+            gap: 0;
+            margin-right: 20px;
+        }
+
+        .header h1 {
+            color: var(--accent-color);
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .menu-item {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .menu-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 1000;
+        }
+
+        .menu-item:hover .dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 13px;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .dropdown-separator {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 4px 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* File Tabs - Match Text Editor */
+        .file-tabs {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .file-tab {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px 4px 0 0;
+            padding: 8px 16px;
+            margin-right: 2px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 13px;
+            position: relative;
+        }
+
+        .file-tab.active {
+            background: var(--bg-primary);
+            border-bottom-color: var(--bg-primary);
+        }
+
+        .file-tab:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .file-tab-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-tab-close {
+            margin-left: 8px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .file-tab-close:hover {
+            opacity: 1;
+            color: var(--accent-color);
+        }
+
+        .new-file-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .new-file-btn:hover {
+            background: var(--accent-color);
+        }
+
+        /* Toolbar - Match Text Editor */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 8px;
+            background-color: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Buttons - Match Text Editor style */
+        button {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tool-btn {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            min-width: 60px;
+            transition: all 0.2s ease;
+            font-size: 11px;
+        }
+
+        .tool-btn.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tool-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .format-btn {
+            background: var(--button-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 2px;
+            min-width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .format-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .format-btn.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        #fontFamily {
+            background: var(--button-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 0 4px;
+            min-width: 100px;
+        }
+
+        #fontFamily:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: -2px;
+        }
+
+        .tool-separator {
+            width: 1px;
+            height: 30px;
+            background: var(--border-color);
+            margin: 0 10px;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .color-btn {
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .color-btn.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 1px var(--accent-color);
+        }
+
+        .color-btn:hover {
+            border-color: var(--accent-color);
+        }
+
+        .color-picker {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+
+        /* Drawing Canvas Container */
+        .drawing-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        #drawingCanvas {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            cursor: crosshair;
+        }
+
+        /* Status Bar - Match Text Editor */
+        .status-bar {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 5px 10px;
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+
+        /* Range input styling */
+        input[type="range"] {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            height: 20px;
+        }
+
+        /* Label styling */
+        label {
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        /* Span styling for size display */
+        #sizeDisplay, #currentTool, #currentColorDisplay, #currentSizeDisplay {
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="app">
+        <!-- Header -->
+        <div class="header">
+            <div class="menu-bar">
+        <div class="menu-item">
+            File
+            <div class="dropdown-menu">
+                <button class="dropdown-item" onclick="clearCanvas()">New</button>
+                <button class="dropdown-item" onclick="loadWhiteboard()">Open</button>
+                <button class="dropdown-item" onclick="saveWhiteboard()">Save</button>
+            </div>
+        </div>
+        <div class="menu-item">
+            Edit
+            <div class="dropdown-menu">
+                <button class="dropdown-item" onclick="undoDrawing()">Undo</button>
+                <button class="dropdown-item" onclick="redoDrawing()">Redo</button>
+                <button class="dropdown-item" onclick="clearCanvas()">Clear All</button>
+            </div>
+        </div>
+        <div class="menu-item">
+            View
+            <div class="dropdown-menu">
+                <button class="dropdown-item" onclick="toggleTheme()">Toggle Theme</button>
+            </div>
+        </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- File Tabs -->
+            <div class="file-tabs" id="fileTabs">
+                <button class="new-file-btn" onclick="newWhiteboard()">+</button>
+            </div>
+
+            <!-- Drawing Tools Toolbar -->
+            <div class="toolbar">
+                <div class="tool-group">
+                    <button id="penTool" class="tool-btn active" onclick="setDrawingTool('pen')">
+                        <span>✏️</span>Pen
+                    </button>
+                    <button id="eraserTool" class="tool-btn" onclick="setDrawingTool('eraser')">
+                        <span>🧹</span>Eraser
+                    </button>
+                    <button id="textTool" class="tool-btn" onclick="setDrawingTool('text')">
+                        <span>Aa</span>Text
+                    </button>
+                </div>
+                
+                <div class="tool-separator"></div>
+                
+                <!-- Pen Tool Controls -->
+                <div id="penControls" class="tool-group" style="display: flex;">
+                    <label>Colors:</label>
+                    <div class="color-palette">
+                        <button class="color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
+                        <button class="color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
+                        <button class="color-btn" style="background: #00ff00;" onclick="setDrawingColor('#00ff00')" title="Green"></button>
+                        <input type="color" class="color-picker" onchange="selectCustomColor(this)" title="Custom Color">
+                    </div>
+                </div>
+                
+                <div id="penSeparator1" class="tool-separator" style="display: flex;"></div>
+                
+                <div id="penSizeControls" class="tool-group" style="display: flex;">
+                    <label>Size:</label>
+                    <input type="range" id="brushSize" min="1" max="20" value="3" onchange="setBrushSize(this.value)">
+                    <span id="sizeDisplay">3px</span>
+                </div>
+                
+                <!-- Eraser Tool Controls -->
+                <div id="eraserControls" class="tool-group" style="display: none;">
+                    <label>Eraser Size:</label>
+                    <input type="range" id="eraserSize" min="5" max="50" value="15" onchange="setEraserSize(this.value)">
+                    <span id="eraserSizeDisplay">15px</span>
+                </div>
+                
+                <!-- Text Tool Controls -->
+                <div id="textControls" class="tool-group" style="display: none;">
+                    <label>Font:</label>
+                    <select id="fontFamily" onchange="setFontFamily(this.value)">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                    </select>
+                </div>
+                
+                <div id="textSeparator1" class="tool-separator" style="display: none;"></div>
+                
+                <div id="textSizeControls" class="tool-group" style="display: none;">
+                    <label>Font Size:</label>
+                    <input type="range" id="fontSizeSlider" min="10" max="72" value="16" onchange="setFontSize(this.value)">
+                    <span id="fontSizeDisplay">16px</span>
+                </div>
+                
+                <div id="textSeparator2" class="tool-separator" style="display: none;"></div>
+                
+                <div id="textFormatControls" class="tool-group" style="display: none;">
+                    <label>Format:</label>
+                    <button id="boldButton" class="format-btn" onclick="toggleTextFormat('bold')" title="Bold">
+                        <strong>B</strong>
+                    </button>
+                    <button id="italicButton" class="format-btn" onclick="toggleTextFormat('italic')" title="Italic">
+                        <em>I</em>
+                    </button>
+                </div>
+                
+                <div id="textSeparator3" class="tool-separator" style="display: none;"></div>
+                
+                <div id="textColorControls" class="tool-group" style="display: none;">
+                    <label>Text Color:</label>
+                    <div class="color-palette">
+                        <button class="color-btn text-color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
+                        <button class="color-btn text-color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
+                        <button class="color-btn text-color-btn" style="background: #00ff00;" onclick="setDrawingColor('#00ff00')" title="Green"></button>
+                        <input type="color" class="color-picker" onchange="selectCustomColor(this)" title="Custom Color">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drawing Canvas -->
+            <div class="drawing-container">
+                <canvas id="drawingCanvas"></canvas>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span>Mode: Whiteboard</span>
+                <span>Tool: <span id="currentTool">Pen</span></span>
+                <span>Size: <span id="currentSizeDisplay">3px</span></span>
+                <span>Canvas: <span id="canvasSize">Loading...</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Drawing functionality
+        let canvas, ctx;
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let currentColor = '#ff0000';
+        let currentSize = 3;
+        let undoStack = [];
+        let redoStack = [];
+        let lastX, lastY;
+        
+        // Text tool specific variables
+        let textBoxes = [];
+        let activeTextBox = null;
+        let textInput = null;
+        let fontSize = 16; // Initialize with default value
+        
+        // Eraser specific variables
+        let eraserSize = 15;
+        
+        // File management
+        let whiteboards = [{
+            id: 'whiteboard_0',
+            name: 'Untitled.png',
+            data: null,
+            modified: false
+        }];
+        let activeWhiteboardId = 'whiteboard_0';
+        let whiteboardCounter = 1;
+        
+        function getCurrentWhiteboard() {
+            return whiteboards.find(wb => wb.id === activeWhiteboardId);
+        }
+        
+        function newWhiteboard() {
+            const newId = 'whiteboard_' + whiteboardCounter++;
+            const newWhiteboard = {
+                id: newId,
+                name: `Untitled${whiteboardCounter - 1}.png`,
+                data: null,
+                modified: false
+            };
+            whiteboards.push(newWhiteboard);
+            switchToWhiteboard(newId);
+            renderWhiteboardTabs();
+        }
+        
+        function switchToWhiteboard(whiteboardId) {
+            // Save current whiteboard state
+            if (canvas) {
+                const currentWb = getCurrentWhiteboard();
+                if (currentWb) {
+                    currentWb.data = canvas.toDataURL();
+                }
+            }
+            
+            activeWhiteboardId = whiteboardId;
+            renderWhiteboardTabs();
+            
+            // Load the switched whiteboard
+            const targetWb = getCurrentWhiteboard();
+            if (targetWb && targetWb.data && canvas) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = targetWb.data;
+            } else if (canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function closeWhiteboard(whiteboardId) {
+            if (whiteboards.length <= 1) return; // Keep at least one whiteboard
+            
+            const index = whiteboards.findIndex(wb => wb.id === whiteboardId);
+            if (index !== -1) {
+                whiteboards.splice(index, 1);
+                
+                // If closing active whiteboard, switch to another
+                if (activeWhiteboardId === whiteboardId) {
+                    const newActiveIndex = Math.min(index, whiteboards.length - 1);
+                    switchToWhiteboard(whiteboards[newActiveIndex].id);
+                } else {
+                    renderWhiteboardTabs();
+                }
+            }
+        }
+        
+        function renderWhiteboardTabs() {
+            const tabsContainer = document.getElementById('fileTabs');
+            const newFileBtn = tabsContainer.querySelector('.new-file-btn');
+            
+            // Clear existing tabs but keep new file button
+            tabsContainer.innerHTML = '';
+            tabsContainer.appendChild(newFileBtn);
+            
+            // Add tabs for each whiteboard
+            whiteboards.forEach(wb => {
+                const tab = document.createElement('div');
+                tab.className = `file-tab ${wb.id === activeWhiteboardId ? 'active' : ''}`;
+                tab.onclick = (e) => {
+                    if (!e.target.classList.contains('file-tab-close')) {
+                        switchToWhiteboard(wb.id);
+                    }
+                };
+                
+                tab.innerHTML = `
+                    <span class="file-tab-name">${wb.name}${wb.modified ? ' •' : ''}</span>
+                    ${whiteboards.length > 1 ? `<span class="file-tab-close" onclick="event.stopPropagation(); closeWhiteboard('${wb.id}');">×</span>` : ''}
+                `;
+                
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        function initCanvas() {
+            canvas = document.getElementById('drawingCanvas');
+            ctx = canvas.getContext('2d');
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = currentSize;
+            ctx.strokeStyle = currentColor;
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing);
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            // Only finalize text when clicking outside the input area
+            document.addEventListener('mousedown', function(e) {
+                if (currentTool === 'text' && activeTextBox && textInput) {
+                    // Only finalize if clicking completely outside the text input
+                    if (e.target !== textInput && 
+                        e.target.getAttribute('data-text-input') !== 'true' &&
+                        !textInput.contains(e.target)) {
+                        finalizeTextInput();
+                    }
+                }
+            });
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = currentSize;
+            ctx.strokeStyle = currentColor;
+            
+            updateCanvasSize();
+        }
+
+        function startDrawing(e) {
+            if (currentTool === 'text') {
+                handleTextClick(e);
+                return;
+            }
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = (e.clientX || e.touches[0].clientX) - rect.left;
+            lastY = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            saveState();
+        }
+
+        function draw(e) {
+            if (currentTool === 'text' || !isDrawing) return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = (e.clientX || e.touches[0].clientX) - rect.left;
+            const currentY = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                
+                // Mark current whiteboard as modified
+                const currentWb = getCurrentWhiteboard();
+                if (currentWb) {
+                    currentWb.modified = true;
+                    renderWhiteboardTabs();
+                }
+            }
+        }
+
+        function setDrawingTool(tool) {
+            // Finalize any active text editing when switching tools
+            if (activeTextBox && textInput && currentTool === 'text') {
+                finalizeTextInput();
+            }
+            
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tool + 'Tool').classList.add('active');
+            
+            // Show/hide appropriate controls
+            showToolControls(tool);
+            
+            if (tool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = eraserSize;
+                canvas.style.cursor = 'grab';
+            } else if (tool === 'text') {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'text';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                if (tool === 'pen') {
+                    ctx.lineWidth = currentSize;
+                }
+                canvas.style.cursor = 'crosshair';
+            }
+            
+            document.getElementById('currentTool').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+        }
+        
+        function showToolControls(tool) {
+            // Hide all tool controls first
+            const allControls = ['penControls', 'penSeparator1', 'penSizeControls', 
+                                 'eraserControls', 'textControls', 'textSeparator1', 
+                                 'textSizeControls', 'textSeparator2', 'textFormatControls',
+                                 'textSeparator3', 'textColorControls'];
+            
+            allControls.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.style.display = 'none';
+            });
+            
+            // Show relevant controls based on tool
+            switch(tool) {
+                case 'pen':
+                    document.getElementById('penControls').style.display = 'flex';
+                    document.getElementById('penSeparator1').style.display = 'flex';
+                    document.getElementById('penSizeControls').style.display = 'flex';
+                    break;
+                case 'eraser':
+                    document.getElementById('eraserControls').style.display = 'flex';
+                    break;
+                case 'text':
+                    document.getElementById('textControls').style.display = 'flex';
+                    document.getElementById('textSeparator1').style.display = 'flex';
+                    document.getElementById('textSizeControls').style.display = 'flex';
+                    document.getElementById('textSeparator2').style.display = 'flex';
+                    document.getElementById('textFormatControls').style.display = 'flex';
+                    document.getElementById('textSeparator3').style.display = 'flex';
+                    document.getElementById('textColorControls').style.display = 'flex';
+                    break;
+            }
+        }
+
+        function setDrawingColor(color) {
+            currentColor = color;
+            ctx.strokeStyle = color;
+            
+            // Update active text input color if text tool is active
+            if (currentTool === 'text' && textInput && activeTextBox) {
+                textInput.style.color = color;
+                textInput.style.borderColor = color;
+                activeTextBox.color = color;
+            }
+            
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                const btnColor = btn.style.backgroundColor || btn.style.background;
+                const targetColor = color.toLowerCase();
+                
+                if (btnColor.includes('rgb')) {
+                    const rgb = btnColor.match(/\d+/g);
+                    const hex = '#' + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1);
+                    if (hex === targetColor) {
+                        btn.classList.add('active');
+                    }
+                } else if (btnColor === targetColor || btnColor.replace(/\s/g, '') === targetColor.replace(/\s/g, '')) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            document.getElementById('currentColorDisplay').textContent = color;
+        }
+
+        function selectCustomColor(colorInput) {
+            setDrawingColor(colorInput.value);
+            // Clear active state from all color buttons (both pen and text)
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            // No need to set any button as active since this is a custom color
+        }
+
+        function setBrushSize(size) {
+            currentSize = size;
+            document.getElementById('sizeDisplay').textContent = size + 'px';
+            document.getElementById('currentSizeDisplay').textContent = size + 'px';
+            
+            // Update canvas line width if pen is currently active
+            if (currentTool === 'pen') {
+                ctx.lineWidth = currentSize;
+            }
+        }
+        
+        function setFontSize(size) {
+            fontSize = parseInt(size);
+            document.getElementById('fontSizeDisplay').textContent = size + 'px';
+            
+            // Update current text input if active
+            if (textInput && activeTextBox) {
+                textInput.style.fontSize = fontSize + 'px';
+                activeTextBox.fontSize = fontSize;
+                // Trigger resize
+                setTimeout(() => {
+                    if (textInput) {
+                        const event = new Event('input');
+                        textInput.dispatchEvent(event);
+                    }
+                }, 10);
+            }
+        }
+
+        // Text formatting state
+        let textBold = false;
+        let textItalic = false;
+        let fontFamily = 'Arial';
+        
+        function setFontFamily(family) {
+            fontFamily = family;
+            
+            // Update current text input if active
+            if (textInput && activeTextBox) {
+                textInput.style.fontFamily = family;
+                activeTextBox.fontFamily = family;
+            }
+        }
+        
+        function setEraserSize(size) {
+            eraserSize = parseInt(size);
+            document.getElementById('eraserSizeDisplay').textContent = size + 'px';
+            
+            // Update canvas line width if eraser is currently active
+            if (currentTool === 'eraser') {
+                ctx.lineWidth = eraserSize;
+            }
+        }
+
+        function toggleTextFormat(format) {
+            const button = document.getElementById(format + 'Button');
+            
+            if (format === 'bold') {
+                textBold = !textBold;
+                button.classList.toggle('active', textBold);
+            } else if (format === 'italic') {
+                textItalic = !textItalic;
+                button.classList.toggle('active', textItalic);
+            }
+            
+            // Update current text input if active
+            if (textInput && activeTextBox) {
+                updateTextStyle(textInput, activeTextBox);
+            }
+        }
+
+        function updateTextStyle(input, textBox) {
+            if (!input || !textBox) return;
+            
+            let fontStyle = 'normal';
+            let fontWeight = 'normal';
+            
+            if (textBold) fontWeight = 'bold';
+            if (textItalic) fontStyle = 'italic';
+            
+            input.style.fontWeight = fontWeight;
+            input.style.fontStyle = fontStyle;
+            
+            // Store formatting in textBox
+            textBox.bold = textBold;
+            textBox.italic = textItalic;
+        }
+        
+        // Text tool functions
+        function handleTextClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Don't create new input if clicking on existing text input
+            if (e.target && e.target.getAttribute('data-text-input') === 'true') {
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            console.log('Text click at:', x, y); // Debug log
+            
+            // Check if clicking on existing text first
+            const existingText = findTextAt(x, y);
+            if (existingText) {
+                if (activeTextBox && textInput) {
+                    finalizeTextInput();
+                }
+                setTimeout(() => editExistingText(existingText), 50);
+                return;
+            }
+            
+            // Finalize any current text input first
+            if (activeTextBox && textInput) {
+                finalizeTextInput();
+                setTimeout(() => createTextInput(x, y), 50);
+                return;
+            }
+            
+            // Create new text input
+            createTextInput(x, y);
+        }
+        
+        function findTextAt(x, y) {
+            for (let i = textBoxes.length - 1; i >= 0; i--) {
+                const textBox = textBoxes[i];
+                
+                // Calculate text dimensions for multiline text with proper formatting
+                ctx.save();
+                let fontString = '';
+                if (textBox.bold) fontString += 'bold ';
+                if (textBox.italic) fontString += 'italic ';
+                fontString += (textBox.fontSize || fontSize) + 'px ' + (textBox.fontFamily || 'Arial') + ', sans-serif';
+                ctx.font = fontString;
+                
+                const lines = textBox.text.split('\n');
+                const lineHeight = (textBox.fontSize || fontSize) * 1.2;
+                let maxWidth = 0;
+                
+                // Find the widest line
+                lines.forEach(line => {
+                    const lineWidth = ctx.measureText(line).width;
+                    maxWidth = Math.max(maxWidth, lineWidth);
+                });
+                
+                const totalHeight = lines.length * lineHeight;
+                
+                ctx.restore();
+                
+                // Check if click is within text bounds
+                if (x >= textBox.x && x <= textBox.x + maxWidth &&
+                    y >= textBox.y - (textBox.fontSize || fontSize) && 
+                    y <= textBox.y - (textBox.fontSize || fontSize) + totalHeight) {
+                    return textBox;
+                }
+            }
+            return null;
+        }
+        
+        function createTextInput(x, y) {
+            console.log('Creating text input at:', x, y);
+            saveState();
+            
+            // Create container div for text controls
+            const textContainer = document.createElement('div');
+            textContainer.style.position = 'absolute';
+            textContainer.style.left = (canvas.getBoundingClientRect().left + window.scrollX + x) + 'px';
+            textContainer.style.top = (canvas.getBoundingClientRect().top + window.scrollY + y - fontSize - 40) + 'px';
+            textContainer.style.zIndex = '1002';
+            textContainer.setAttribute('data-text-container', 'true');
+            
+            // Create text controls
+            const textControls = document.createElement('div');
+            textControls.style.background = 'rgba(0,0,0,0.8)';
+            textControls.style.color = 'white';
+            textControls.style.padding = '4px 8px';
+            textControls.style.borderRadius = '4px';
+            textControls.style.marginBottom = '4px';
+            textControls.style.fontSize = '12px';
+            textControls.style.whiteSpace = 'nowrap';
+            textControls.innerHTML = `
+                <label style="margin-right: 8px;">Font: 
+                    <input type="range" min="10" max="72" value="${fontSize}" 
+                           style="width: 60px; margin: 0 4px;" onchange="updateTextFontSize(this.value)">
+                    <span id="textFontSize">${fontSize}px</span>
+                </label>
+                <button onclick="applyTextFormat('bold')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">B</button>
+                <button onclick="applyTextFormat('italic')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">I</button>
+            `;
+            
+            // Create textarea element for multiline support
+            textInput = document.createElement('textarea');
+            textInput.style.fontSize = fontSize + 'px';
+            textInput.style.color = currentColor;
+            textInput.style.background = 'rgba(255, 255, 255, 0.95)';
+            textInput.style.border = '2px solid ' + currentColor;
+            textInput.style.borderRadius = '4px';
+            textInput.style.outline = 'none';
+            textInput.style.fontFamily = 'Arial, sans-serif';
+            textInput.style.padding = '6px 8px';
+            textInput.style.minWidth = '100px';
+            textInput.style.minHeight = (fontSize + 12) + 'px';
+            textInput.style.resize = 'both';
+            textInput.style.overflow = 'hidden';
+            textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+            textInput.style.lineHeight = '1.2';
+            textInput.style.display = 'block';
+            textInput.placeholder = 'Type text here... (Ctrl+Enter to finish, Escape to cancel)';
+            textInput.setAttribute('data-text-input', 'true');
+            
+            textContainer.appendChild(textControls);
+            textContainer.appendChild(textInput);
+            document.body.appendChild(textContainer);
+            
+            // Store references
+            window.currentTextContainer = textContainer;
+            window.currentTextControls = textControls;
+            
+            // Store the position for later
+            activeTextBox = {
+                x: x,
+                y: y,
+                text: '',
+                color: currentColor,
+                fontSize: fontSize,
+                fontFamily: fontFamily,
+                bold: textBold,
+                italic: textItalic
+            };
+
+            // Apply current formatting to the input
+            updateTextStyle(textInput, activeTextBox);
+            textInput.style.fontFamily = fontFamily;
+            
+            // Focus and select
+            textInput.focus();
+            
+            // Auto-resize function
+            function autoResize() {
+                textInput.style.height = 'auto';
+                textInput.style.height = Math.max(fontSize + 12, textInput.scrollHeight) + 'px';
+                textInput.style.width = 'auto';
+                const minWidth = 100;
+                const maxWidth = canvas.width - x - 20;
+                const textWidth = Math.min(Math.max(minWidth, textInput.scrollWidth + 10), maxWidth);
+                textInput.style.width = textWidth + 'px';
+            }
+            
+            // Add input event for auto-resizing
+            textInput.addEventListener('input', autoResize);
+            
+            // Handle keyboard events
+            textInput.addEventListener('keydown', function(e) {
+                e.stopPropagation();
+                
+                // Ctrl+Enter or Alt+Enter to finish
+                if ((e.ctrlKey || e.altKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    finalizeTextInput();
+                }
+                // Escape to cancel
+                else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelTextInput();
+                }
+                // Allow normal Enter for new lines
+                else if (e.key === 'Enter') {
+                    setTimeout(autoResize, 10);
+                }
+            });
+            
+            textInput.addEventListener('keyup', autoResize);
+            
+            // Prevent canvas events when interacting with textarea
+            textContainer.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+            });
+            
+            textContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // Initial auto-resize
+            setTimeout(autoResize, 10);
+        }
+        
+        function editExistingText(textBox) {
+            console.log('Editing existing text:', textBox);
+            saveState();
+            
+            // Remove the text from canvas first
+            const index = textBoxes.indexOf(textBox);
+            if (index > -1) {
+                textBoxes.splice(index, 1);
+                redrawCanvas();
+            }
+            
+            // Inherit formatting from the existing text
+            fontSize = textBox.fontSize || fontSize;
+            fontFamily = textBox.fontFamily || fontFamily;
+            textBold = textBox.bold || false;
+            textItalic = textBox.italic || false;
+            currentColor = textBox.color || currentColor;
+            
+            // Update UI controls to reflect the inherited formatting
+            document.getElementById('fontSizeSlider').value = fontSize;
+            document.getElementById('fontSizeDisplay').textContent = fontSize + 'px';
+            document.getElementById('fontFamily').value = fontFamily;
+            document.getElementById('boldButton').classList.toggle('active', textBold);
+            document.getElementById('italicButton').classList.toggle('active', textItalic);
+            
+            // Create container div for text controls (same structure as createTextInput)
+            const textContainer = document.createElement('div');
+            textContainer.style.position = 'absolute';
+            textContainer.style.left = (canvas.getBoundingClientRect().left + window.scrollX + textBox.x) + 'px';
+            textContainer.style.top = (canvas.getBoundingClientRect().top + window.scrollY + textBox.y - textBox.fontSize - 40) + 'px';
+            textContainer.style.zIndex = '1002';
+            textContainer.setAttribute('data-text-container', 'true');
+            
+            // Create text controls
+            const textControls = document.createElement('div');
+            textControls.style.background = 'rgba(0,0,0,0.8)';
+            textControls.style.color = 'white';
+            textControls.style.padding = '4px 8px';
+            textControls.style.borderRadius = '4px';
+            textControls.style.marginBottom = '4px';
+            textControls.style.fontSize = '12px';
+            textControls.style.whiteSpace = 'nowrap';
+            textControls.innerHTML = `
+                <label style="margin-right: 8px;">Font: 
+                    <input type="range" min="10" max="72" value="${fontSize}" 
+                           style="width: 60px; margin: 0 4px;" onchange="updateTextFontSize(this.value)">
+                    <span id="textFontSize">${fontSize}px</span>
+                </label>
+                <button onclick="applyTextFormat('bold')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">B</button>
+                <button onclick="applyTextFormat('italic')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">I</button>
+            `;
+            
+            // Create textarea with existing text
+            textInput = document.createElement('textarea');
+            textInput.value = textBox.text;
+            textInput.style.fontSize = fontSize + 'px';
+            textInput.style.fontFamily = fontFamily;
+            textInput.style.fontWeight = textBold ? 'bold' : 'normal';
+            textInput.style.fontStyle = textItalic ? 'italic' : 'normal';
+            textInput.style.color = currentColor;
+            textInput.style.background = 'rgba(255, 255, 255, 0.95)';
+            textInput.style.border = '2px solid ' + currentColor;
+            textInput.style.borderRadius = '4px';
+            textInput.style.outline = 'none';
+            textInput.style.fontFamily = 'Arial, sans-serif';
+            textInput.style.padding = '6px 8px';
+            textInput.style.minWidth = '100px';
+            textInput.style.minHeight = (fontSize + 12) + 'px';
+            textInput.style.resize = 'both';
+            textInput.style.overflow = 'hidden';
+            textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+            textInput.style.lineHeight = '1.2';
+            textInput.style.display = 'block';
+            textInput.placeholder = 'Type text here... (Ctrl+Enter to finish, Escape to cancel)';
+            textInput.setAttribute('data-text-input', 'true');
+            
+            textContainer.appendChild(textControls);
+            textContainer.appendChild(textInput);
+            document.body.appendChild(textContainer);
+            
+            // Store references (crucial for proper cleanup)
+            window.currentTextContainer = textContainer;
+            window.currentTextControls = textControls;
+            
+            activeTextBox = {
+                x: textBox.x,
+                y: textBox.y,
+                text: textBox.text,
+                color: textBox.color,
+                fontSize: textBox.fontSize
+            };
+            
+            textInput.focus();
+            textInput.select();
+            
+            // Auto-resize function
+            function autoResize() {
+                textInput.style.height = 'auto';
+                textInput.style.height = Math.max(textBox.fontSize + 12, textInput.scrollHeight) + 'px';
+                textInput.style.width = 'auto';
+                const minWidth = 100;
+                const maxWidth = canvas.width - textBox.x - 20;
+                const textWidth = Math.min(Math.max(minWidth, textInput.scrollWidth + 10), maxWidth);
+                textInput.style.width = textWidth + 'px';
+            }
+            
+            textInput.addEventListener('input', autoResize);
+            
+            textInput.addEventListener('keydown', function(e) {
+                e.stopPropagation();
+                if ((e.ctrlKey || e.altKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    finalizeTextInput();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelTextInput();
+                } else if (e.key === 'Enter') {
+                    setTimeout(autoResize, 10);
+                }
+            });
+            
+            textInput.addEventListener('keyup', autoResize);
+            
+            textInput.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+            });
+            
+            textInput.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            setTimeout(autoResize, 10);
+        }
+        
+        // Text formatting helper functions
+        window.updateTextFontSize = function(size) {
+            fontSize = parseInt(size);
+            document.getElementById('textFontSize').textContent = size + 'px';
+            if (textInput) {
+                textInput.style.fontSize = fontSize + 'px';
+                if (activeTextBox) {
+                    activeTextBox.fontSize = fontSize;
+                }
+                // Trigger resize
+                setTimeout(() => {
+                    if (textInput) {
+                        const event = new Event('input');
+                        textInput.dispatchEvent(event);
+                    }
+                }, 10);
+            }
+        };
+        
+        window.applyTextFormat = function(format) {
+            if (!textInput || !activeTextBox) return;
+            
+            if (format === 'bold') {
+                const isBold = textInput.style.fontWeight === 'bold';
+                textInput.style.fontWeight = isBold ? 'normal' : 'bold';
+                activeTextBox.fontWeight = isBold ? 'normal' : 'bold';
+            } else if (format === 'italic') {
+                const isItalic = textInput.style.fontStyle === 'italic';
+                textInput.style.fontStyle = isItalic ? 'normal' : 'italic';
+                activeTextBox.fontStyle = isItalic ? 'normal' : 'italic';
+            }
+        };
+
+        function handleTextKeydown(e) {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+                finalizeTextInput();
+            }
+        }
+        
+        function finalizeTextInput() {
+            if (!textInput || !activeTextBox) return;
+            
+            const text = textInput.value.trim();
+            console.log('Finalizing text:', text);
+            
+            if (text) {
+                activeTextBox.text = text;
+                textBoxes.push(activeTextBox);
+                drawText(activeTextBox);
+                
+                // Mark as modified
+                const currentWb = getCurrentWhiteboard();
+                if (currentWb) {
+                    currentWb.modified = true;
+                    renderWhiteboardTabs();
+                }
+            }
+            
+            // Clean up
+            if (window.currentTextContainer && window.currentTextContainer.parentNode) {
+                document.body.removeChild(window.currentTextContainer);
+            }
+            textInput = null;
+            activeTextBox = null;
+            window.currentTextContainer = null;
+            window.currentTextControls = null;
+        }
+        
+        function cancelTextInput() {
+            // Clean up the text container (which includes both controls and textarea)
+            if (window.currentTextContainer && window.currentTextContainer.parentNode) {
+                document.body.removeChild(window.currentTextContainer);
+            }
+            textInput = null;
+            activeTextBox = null;
+            window.currentTextContainer = null;
+            window.currentTextControls = null;
+        }
+        
+        function drawText(textBox) {
+            ctx.save();
+            
+            // Apply text formatting
+            let fontString = '';
+            if (textBox.bold) fontString += 'bold ';
+            if (textBox.italic) fontString += 'italic ';
+            fontString += (textBox.fontSize || fontSize) + 'px ' + (textBox.fontFamily || 'Arial') + ', sans-serif';
+            
+            ctx.font = fontString;
+            ctx.fillStyle = textBox.color;
+            ctx.textBaseline = 'top';
+            
+            // Handle multiline text
+            const lines = textBox.text.split('\n');
+            const lineHeight = (textBox.fontSize || fontSize) * 1.2;
+            
+            lines.forEach((line, index) => {
+                const yPos = textBox.y - (textBox.fontSize || fontSize) + (index * lineHeight);
+                ctx.fillText(line, textBox.x, yPos);
+            });
+            
+            ctx.restore();
+            console.log('Drew formatted text:', textBox.text, 'with font:', textBox.fontFamily, 'bold:', textBox.bold, 'italic:', textBox.italic);
+        }
+        
+        function redrawCanvas() {
+            // Clear the entire canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Redraw all text boxes
+            textBoxes.forEach(textBox => {
+                drawText(textBox);
+            });
+        }
+
+        function saveState() {
+            undoStack.push(canvas.toDataURL());
+            redoStack = [];
+            if (undoStack.length > 20) undoStack.shift();
+        }
+
+        function undoDrawing() {
+            if (undoStack.length > 0) {
+                redoStack.push(canvas.toDataURL());
+                const previousState = undoStack.pop();
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = previousState;
+            }
+        }
+
+        function redoDrawing() {
+            if (redoStack.length > 0) {
+                undoStack.push(canvas.toDataURL());
+                const nextState = redoStack.pop();
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = nextState;
+            }
+        }
+
+        function clearCanvas() {
+            saveState();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            textBoxes = []; // Clear all text boxes
+            
+            // Mark current whiteboard as modified
+            const currentWb = getCurrentWhiteboard();
+            if (currentWb) {
+                currentWb.modified = true;
+                renderWhiteboardTabs();
+            }
+        }
+
+        function saveWhiteboard() {
+            const currentWb = getCurrentWhiteboard();
+            if (!currentWb) return;
+            
+            const dataURL = canvas.toDataURL();
+            const link = document.createElement('a');
+            link.download = currentWb.name;
+            link.href = dataURL;
+            link.click();
+            
+            // Mark as saved (not modified)
+            currentWb.modified = false;
+            renderWhiteboardTabs();
+        }
+
+        function loadWhiteboard() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                            
+                            // Update current whiteboard name and mark as modified
+                            const currentWb = getCurrentWhiteboard();
+                            if (currentWb) {
+                                currentWb.name = file.name.replace(/\.[^/.]+$/, '') + '.png';
+                                currentWb.modified = true;
+                                currentWb.data = canvas.toDataURL();
+                                renderWhiteboardTabs();
+                            }
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-theme', newTheme);
+            
+            // Update theme status display (if we had one)
+            localStorage.setItem('whiteboardTheme', newTheme);
+        }
+
+        function updateCanvasSize() {
+            const canvasSizeDisplay = document.getElementById('canvasSize');
+            if (canvasSizeDisplay) {
+                canvasSizeDisplay.textContent = `${canvas.width} x ${canvas.height}`;
+            }
+        }
+
+        // Initialize application
+        function initializeApp() {
+            // Load saved theme
+            const savedTheme = localStorage.getItem('whiteboardTheme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            // Initialize canvas
+            initCanvas();
+            
+            // Render initial tabs
+            renderWhiteboardTabs();
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+        }
+
+        // Handle keyboard shortcuts
+        function handleKeyboardShortcuts(e) {
+            // Don't handle shortcuts if we're typing in a text input
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+                return;
+            }
+            
+            // Check if Ctrl (or Cmd on Mac) is pressed
+            const ctrlKey = e.ctrlKey || e.metaKey;
+            
+            if (ctrlKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'z':
+                        if (e.shiftKey) {
+                            // Ctrl+Shift+Z = Redo
+                            e.preventDefault();
+                            e.stopPropagation();
+                            redoDrawing();
+                        } else {
+                            // Ctrl+Z = Undo
+                            e.preventDefault();
+                            e.stopPropagation();
+                            undoDrawing();
+                        }
+                        break;
+                    case 'y':
+                        // Ctrl+Y = Redo
+                        e.preventDefault();
+                        e.stopPropagation();
+                        redoDrawing();
+                        break;
+                    case 's':
+                        // Ctrl+S = Save
+                        e.preventDefault();
+                        e.stopPropagation();
+                        saveWhiteboard();
+                        break;
+                    case 'n':
+                        // Ctrl+N = New whiteboard
+                        e.preventDefault();
+                        e.stopPropagation();
+                        newWhiteboard();
+                        break;
+                    case 'o':
+                        // Ctrl+O = Open/Load whiteboard
+                        e.preventDefault();
+                        e.stopPropagation();
+                        loadWhiteboard();
+                        break;
+                }
+            }
+        }
+
+        // Initialize canvas when page loads
+        window.addEventListener('load', initializeApp);
+    </script>
+</body>
+</html>
