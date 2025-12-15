@@ -30,15 +30,6 @@
             --border-color: #3c3c3c;
             --accent-color: #61dafb;
             --highlight-bg: #264f78;
-            
-            /* RGB versions for rgba() functions */
-            --bg-primary-rgb: 30, 30, 30;
-            --bg-secondary-rgb: 37, 37, 38;
-            --bg-tertiary-rgb: 45, 45, 48;
-            --text-primary-rgb: 212, 212, 212;
-            --text-secondary-rgb: 160, 160, 160;
-            --border-color-rgb: 60, 60, 60;
-            --accent-color-rgb: 97, 218, 251;
         }
         
         [data-theme="light"] {
@@ -50,15 +41,6 @@
             --border-color: #cccccc;
             --accent-color: #0078d4;
             --highlight-bg: #b3d9ff;
-            
-            /* RGB versions for rgba() functions */
-            --bg-primary-rgb: 255, 255, 255;
-            --bg-secondary-rgb: 248, 248, 248;
-            --bg-tertiary-rgb: 232, 232, 232;
-            --text-primary-rgb: 51, 51, 51;
-            --text-secondary-rgb: 102, 102, 102;
-            --border-color-rgb: 204, 204, 204;
-            --accent-color-rgb: 0, 120, 212;
         }
 
         .app {
@@ -422,7 +404,7 @@
         }
 
         /* Span styling for size display */
-        #sizeDisplay, #currentTool, #currentColorDisplay, #currentSizeDisplay {
+        #sizeDisplay, #currentTool, #currentSizeDisplay {
             color: var(--accent-color);
             font-weight: 500;
         }
@@ -446,7 +428,6 @@
             <div class="dropdown-menu">
                 <button class="dropdown-item" onclick="undoDrawing()">Undo</button>
                 <button class="dropdown-item" onclick="redoDrawing()">Redo</button>
-                <button class="dropdown-item" onclick="clearAllSelections()">Clear Selection</button>
                 <button class="dropdown-item" onclick="clearCanvas()">Clear All</button>
             </div>
         </div>
@@ -494,7 +475,6 @@
                 
                 <!-- Pen Tool Controls -->
                 <div id="penControls" class="tool-group" style="display: flex;">
-                    <label>Colors:</label>
                     <div class="color-palette">
                         <button class="color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
                         <button class="color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
@@ -506,21 +486,26 @@
                 <div id="penSeparator1" class="tool-separator" style="display: flex;"></div>
                 
                 <div id="penSizeControls" class="tool-group" style="display: flex;">
-                    <label>Size:</label>
                     <input type="range" id="brushSize" min="1" max="20" value="3" onchange="setBrushSize(this.value)">
                     <span id="sizeDisplay">3px</span>
                 </div>
                 
+                <div id="penSeparator2" class="tool-separator" style="display: flex;"></div>
+                
+                <div id="penAlphaControls" class="tool-group" style="display: flex;">
+                    <label for="penAlpha">Opacity:</label>
+                    <input type="range" id="penAlpha" min="0.1" max="1" step="0.1" value="1" onchange="setPenAlpha(this.value)">
+                    <span id="alphaDisplay">100%</span>
+                </div>
+                
                 <!-- Eraser Tool Controls -->
                 <div id="eraserControls" class="tool-group" style="display: none;">
-                    <label>Eraser Size:</label>
                     <input type="range" id="eraserSize" min="5" max="50" value="15" onchange="setEraserSize(this.value)">
                     <span id="eraserSizeDisplay">15px</span>
                 </div>
                 
                 <!-- Text Tool Controls -->
                 <div id="textControls" class="tool-group" style="display: none;">
-                    <label>Font:</label>
                     <select id="fontFamily" onchange="setFontFamily(this.value)">
                         <option value="Arial">Arial</option>
                         <option value="Helvetica">Helvetica</option>
@@ -535,7 +520,6 @@
                 <div id="textSeparator1" class="tool-separator" style="display: none;"></div>
                 
                 <div id="textSizeControls" class="tool-group" style="display: none;">
-                    <label>Font Size:</label>
                     <input type="range" id="fontSizeSlider" min="10" max="72" value="16" onchange="setFontSize(this.value)">
                     <span id="fontSizeDisplay">16px</span>
                 </div>
@@ -543,11 +527,10 @@
                 <div id="textSeparator2" class="tool-separator" style="display: none;"></div>
                 
                 <div id="textFormatControls" class="tool-group" style="display: none;">
-                    <label>Format:</label>
-                    <button id="boldButton" class="format-btn" onclick="toggleTextFormat('bold')" title="Bold">
+                    <button id="boldButton" class="format-btn" onclick="toggleTextFormat('bold')" onmousedown="event.preventDefault()" title="Bold">
                         <strong>B</strong>
                     </button>
-                    <button id="italicButton" class="format-btn" onclick="toggleTextFormat('italic')" title="Italic">
+                    <button id="italicButton" class="format-btn" onclick="toggleTextFormat('italic')" onmousedown="event.preventDefault()" title="Italic">
                         <em>I</em>
                     </button>
                 </div>
@@ -555,7 +538,6 @@
                 <div id="textSeparator3" class="tool-separator" style="display: none;"></div>
                 
                 <div id="textColorControls" class="tool-group" style="display: none;">
-                    <label>Text Color:</label>
                     <div class="color-palette">
                         <button class="color-btn text-color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
                         <button class="color-btn text-color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
@@ -585,12 +567,12 @@
     <script>
         // Drawing functionality
         let canvas, ctx;
+        let tempCanvas, tempCtx; // For transparent drawing
         let isDrawing = false;
         let currentTool = 'pen';
         let currentColor = '#ff0000';
         let currentSize = 3;
-        let undoStack = [];
-        let redoStack = [];
+        let penAlpha = 1;
         let lastX, lastY;
         
         // Undo/Redo state management
@@ -733,6 +715,10 @@
             canvas = document.getElementById('drawingCanvas');
             ctx = canvas.getContext('2d');
             
+            // Create off-screen canvas for transparent drawing
+            tempCanvas = document.createElement('canvas');
+            tempCtx = tempCanvas.getContext('2d');
+            
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
@@ -834,69 +820,23 @@
             redrawCanvas();
         }
 
-        function handleKeyboardShortcuts(e) {
-            // Don't trigger shortcuts if typing in text input
-            if (activeTextBox && textInput) return;
-            
-            switch(e.key) {
-                case 'Delete':
-                case 'Backspace':
-                    if (selectedShape) {
-                        e.preventDefault();
-                        deleteShape();
-                    }
-                    break;
-                case 'Escape':
-                    if (selectedShape) {
-                        e.preventDefault();
-                        selectedShape = null;
-                        redrawCanvas();
-                    }
-                    break;
-            }
-            
-            // Ctrl/Cmd shortcuts
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case 'c':
-                        if (selectedShape) {
-                            e.preventDefault();
-                            copyShape();
-                        }
-                        break;
-                    case 'v':
-                        if (copiedShape) {
-                            e.preventDefault();
-                            pasteShape();
-                        }
-                        break;
-                    case 'x':
-                        if (selectedShape) {
-                            e.preventDefault();
-                            cutShape();
-                        }
-                        break;
-                    case 'z':
-                        e.preventDefault();
-                        undoDrawing();
-                        break;
-                    case 'y':
-                        e.preventDefault();
-                        redoDrawing();
-                        break;
-                }
-            }
-        }
-        
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
             
+            // Resize off-screen canvas to match
+            tempCanvas.width = rect.width;
+            tempCanvas.height = rect.height;
+            
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.lineWidth = currentSize;
             ctx.strokeStyle = currentColor;
+            
+            // Set up temp canvas
+            tempCtx.lineCap = 'round';
+            tempCtx.lineJoin = 'round';
             
             updateCanvasSize();
         }
@@ -990,7 +930,6 @@
             
             // Handle clicking empty space (no shape found) with non-shape tools
             if (selectedShape) {
-                console.log('Clearing selection via canvas click');
                 selectedShape = null;
                 redrawCanvas();
             }
@@ -1004,10 +943,21 @@
                 if (currentTool === 'eraser') {
                     ctx.globalCompositeOperation = 'destination-out';
                     ctx.lineWidth = eraserSize;
+                    ctx.globalAlpha = 1;
                 } else {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = currentSize;
-                    ctx.strokeStyle = currentColor;
+                    // For pen with transparency, use off-screen canvas
+                    if (penAlpha < 1) {
+                        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                        tempCtx.globalCompositeOperation = 'source-over';
+                        tempCtx.lineWidth = currentSize;
+                        tempCtx.strokeStyle = currentColor;
+                        tempCtx.globalAlpha = 1; // Draw solid on temp canvas
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.lineWidth = currentSize;
+                        ctx.strokeStyle = currentColor;
+                        ctx.globalAlpha = 1;
+                    }
                 }
                 
                 ctx.lineCap = 'round';
@@ -1132,7 +1082,6 @@
                     const currentAngle = Math.atan2(currentY - centerY, currentX - centerX);
                     const angleDiff = currentAngle - rotationStartAngle;
                     selectedShape.angle = shapeStartAngle + angleDiff;
-                    console.log('Rotating to angle:', selectedShape.angle);
                 } else {
                     // Set appropriate resize cursor
                     if (resizeHandle === 'nw' || resizeHandle === 'se') {
@@ -1156,19 +1105,31 @@
             // Handle regular drawing (pen, eraser)
             if (currentTool === 'text' || !isDrawing) return;
             
-            // Use world coordinates directly with canvas transformation
-            resetTransform();
-            applyTransform();
+            // Choose the right canvas context
+            const drawCtx = (currentTool === 'pen' && penAlpha < 1) ? tempCtx : ctx;
             
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(currentX, currentY);
-            ctx.stroke();
+            // Use world coordinates directly with canvas transformation
+            if (drawCtx === ctx) {
+                resetTransform();
+                applyTransform();
+            } else {
+                // Apply same transform to temp canvas
+                tempCtx.setTransform(zoomLevel, 0, 0, zoomLevel, -viewportX * zoomLevel, -viewportY * zoomLevel);
+            }
+            
+            drawCtx.beginPath();
+            drawCtx.moveTo(lastX, lastY);
+            drawCtx.lineTo(currentX, currentY);
+            drawCtx.stroke();
+            
+            if (drawCtx === ctx) {
+                resetTransform();
+            } else {
+                tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+            }
             
             lastX = currentX;
             lastY = currentY;
-            
-            resetTransform();
         }
 
         function stopDrawing(e) {
@@ -1226,6 +1187,13 @@
             if (isDrawing) {
                 isDrawing = false;
                 
+                // If we used temp canvas, composite it to main canvas with transparency
+                if (currentTool === 'pen' && penAlpha < 1) {
+                    ctx.globalAlpha = penAlpha;
+                    ctx.drawImage(tempCanvas, 0, 0);
+                    ctx.globalAlpha = 1;
+                }
+                
                 // For pen/eraser, save state after drawing is complete
                 if (currentTool === 'pen' || currentTool === 'eraser') {
                     // Save the current canvas state including pen/eraser strokes
@@ -1257,14 +1225,6 @@
             }
         }
 
-        function clearAllSelections() {
-            selectedShape = null;
-            isDragging = false;
-            isResizing = false;
-            resizeHandle = null;
-            redrawCanvas();
-        }
-        
         function handleGlobalClick(e) {
             // Don't clear selection if clicking on canvas (handled by startDrawing)
             if (e.target === canvas) return;
@@ -1278,7 +1238,6 @@
             
             // Clear selection when clicking anywhere else (buttons, menus, toolbar, etc.)
             if (selectedShape) {
-                console.log('Clearing selection via global click');
                 selectedShape = null;
                 redrawCanvas();
             }
@@ -1292,7 +1251,6 @@
             
             // Clear selection when switching tools
             if (selectedShape) {
-                console.log('Clearing selection via tool switch');
                 selectedShape = null;
                 redrawCanvas();
             }
@@ -1318,6 +1276,11 @@
             } else {
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.lineWidth = currentSize;
+                if (currentTool === 'pen') {
+                    updateColorWithAlpha();
+                } else {
+                    ctx.strokeStyle = currentColor;
+                }
             }
             
             // Set initial cursor for the tool
@@ -1337,6 +1300,7 @@
         function showToolControls(tool) {
             // Hide all tool controls first
             const allControls = ['penControls', 'penSeparator1', 'penSizeControls', 
+                                 'penSeparator2', 'penAlphaControls',
                                  'eraserControls', 'textControls', 'textSeparator1', 
                                  'textSizeControls', 'textSeparator2', 'textFormatControls',
                                  'textSeparator3', 'textColorControls'];
@@ -1352,6 +1316,8 @@
                     document.getElementById('penControls').style.display = 'flex';
                     document.getElementById('penSeparator1').style.display = 'flex';
                     document.getElementById('penSizeControls').style.display = 'flex';
+                    document.getElementById('penSeparator2').style.display = 'flex';
+                    document.getElementById('penAlphaControls').style.display = 'flex';
                     break;
                 case 'eraser':
                     document.getElementById('eraserControls').style.display = 'flex';
@@ -1370,7 +1336,13 @@
 
         function setDrawingColor(color) {
             currentColor = color;
-            ctx.strokeStyle = color;
+            
+            // Apply alpha if using pen tool
+            if (currentTool === 'pen') {
+                updateColorWithAlpha();
+            } else {
+                ctx.strokeStyle = color;
+            }
             
             // Update active text input color if text tool is active
             if (currentTool === 'text' && textInput && activeTextBox) {
@@ -1384,18 +1356,10 @@
                 const btnColor = btn.style.backgroundColor || btn.style.background;
                 const targetColor = color.toLowerCase();
                 
-                if (btnColor.includes('rgb')) {
-                    const rgb = btnColor.match(/\d+/g);
-                    const hex = '#' + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1);
-                    if (hex === targetColor) {
-                        btn.classList.add('active');
-                    }
-                } else if (btnColor === targetColor || btnColor.replace(/\s/g, '') === targetColor.replace(/\s/g, '')) {
+                if (btnColor === targetColor || btnColor.replace(/\s/g, '') === targetColor.replace(/\s/g, '')) {
                     btn.classList.add('active');
                 }
             });
-            
-            document.getElementById('currentColorDisplay').textContent = color;
         }
 
         function selectCustomColor(colorInput) {
@@ -1415,6 +1379,21 @@
             // Update canvas line width if pen is currently active
             if (currentTool === 'pen') {
                 ctx.lineWidth = currentSize;
+            }
+        }
+        
+        function setPenAlpha(alpha) {
+            penAlpha = parseFloat(alpha);
+            document.getElementById('alphaDisplay').textContent = Math.round(alpha * 100) + '%';
+            
+            // Update current color with new alpha
+            updateColorWithAlpha();
+        }
+        
+        function updateColorWithAlpha() {
+            if (currentTool === 'pen') {
+                // Use solid color, transparency handled by globalAlpha
+                ctx.strokeStyle = currentColor;
             }
         }
         
@@ -1464,6 +1443,7 @@
         function toggleTextFormat(format) {
             const button = document.getElementById(format + 'Button');
             
+            // Toggle global formatting for new text
             if (format === 'bold') {
                 textBold = !textBold;
                 button.classList.toggle('active', textBold);
@@ -1506,10 +1486,12 @@
             }
             
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            const canvasX = (e.clientX || e.touches[0].clientX) - rect.left;
+            const canvasY = (e.clientY || e.touches[0].clientY) - rect.top;
             
-            console.log('Text click at:', x, y); // Debug log
+            // Transform coordinates to account for zoom and viewport offset
+            const x = (canvasX / zoomLevel) + viewportX;
+            const y = (canvasY / zoomLevel) + viewportY;
             
             // Check if clicking on existing text first
             const existingText = findTextAt(x, y);
@@ -1559,9 +1541,15 @@
                 ctx.restore();
                 
                 // Check if click is within text bounds
-                if (x >= textBox.x && x <= textBox.x + maxWidth &&
-                    y >= textBox.y - (textBox.fontSize || fontSize) && 
-                    y <= textBox.y - (textBox.fontSize || fontSize) + totalHeight) {
+                const textBounds = {
+                    left: textBox.x,
+                    right: textBox.x + maxWidth,
+                    top: textBox.y - (textBox.fontSize || fontSize),
+                    bottom: textBox.y - (textBox.fontSize || fontSize) + totalHeight
+                };
+                
+                if (x >= textBounds.left && x <= textBounds.right &&
+                    y >= textBounds.top && y <= textBounds.bottom) {
                     return textBox;
                 }
             }
@@ -1569,38 +1557,18 @@
         }
         
         function createTextInput(x, y) {
-            console.log('Creating text input at:', x, y);
             saveState();
-            
-            // Create container div for text controls
-            const textContainer = document.createElement('div');
-            textContainer.style.position = 'absolute';
-            textContainer.style.left = (canvas.getBoundingClientRect().left + window.scrollX + x) + 'px';
-            textContainer.style.top = (canvas.getBoundingClientRect().top + window.scrollY + y - fontSize - 40) + 'px';
-            textContainer.style.zIndex = '1002';
-            textContainer.setAttribute('data-text-container', 'true');
-            
-            // Create text controls
-            const textControls = document.createElement('div');
-            textControls.style.background = 'rgba(0,0,0,0.8)';
-            textControls.style.color = 'white';
-            textControls.style.padding = '4px 8px';
-            textControls.style.borderRadius = '4px';
-            textControls.style.marginBottom = '4px';
-            textControls.style.fontSize = '12px';
-            textControls.style.whiteSpace = 'nowrap';
-            textControls.innerHTML = `
-                <label style="margin-right: 8px;">Font: 
-                    <input type="range" min="10" max="72" value="${fontSize}" 
-                           style="width: 60px; margin: 0 4px;" onchange="updateTextFontSize(this.value)">
-                    <span id="textFontSize">${fontSize}px</span>
-                </label>
-                <button onclick="applyTextFormat('bold')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">B</button>
-                <button onclick="applyTextFormat('italic')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">I</button>
-            `;
             
             // Create textarea element for multiline support
             textInput = document.createElement('textarea');
+            textInput.style.position = 'absolute';
+            
+            // Convert world coordinates to screen coordinates for positioning  
+            const screenPos = worldToScreen(x, y);
+            textInput.style.left = (canvas.getBoundingClientRect().left + window.scrollX + screenPos.x) + 'px';
+            textInput.style.top = (canvas.getBoundingClientRect().top + window.scrollY + screenPos.y - fontSize - 10) + 'px';
+            textInput.style.zIndex = '1002';
+            
             textInput.style.fontSize = fontSize + 'px';
             textInput.style.color = currentColor;
             textInput.style.background = 'rgba(255, 255, 255, 0.95)';
@@ -1616,16 +1584,10 @@
             textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             textInput.style.lineHeight = '1.2';
             textInput.style.display = 'block';
-            textInput.placeholder = '';
+            textInput.placeholder = 'Type text...';
             textInput.setAttribute('data-text-input', 'true');
             
-            textContainer.appendChild(textControls);
-            textContainer.appendChild(textInput);
-            document.body.appendChild(textContainer);
-            
-            // Store references
-            window.currentTextContainer = textContainer;
-            window.currentTextControls = textControls;
+            document.body.appendChild(textInput);
             
             // Store the position for later
             activeTextBox = {
@@ -1683,11 +1645,11 @@
             textInput.addEventListener('keyup', autoResize);
             
             // Prevent canvas events when interacting with textarea
-            textContainer.addEventListener('mousedown', function(e) {
+            textInput.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
             });
             
-            textContainer.addEventListener('click', function(e) {
+            textInput.addEventListener('click', function(e) {
                 e.stopPropagation();
             });
             
@@ -1696,7 +1658,6 @@
         }
         
         function editExistingText(textBox) {
-            console.log('Editing existing text:', textBox);
             saveState();
             
             // Remove the text from canvas first
@@ -1715,40 +1676,20 @@
             
             // Update UI controls to reflect the inherited formatting
             document.getElementById('fontSizeSlider').value = fontSize;
-            document.getElementById('fontSizeDisplay').textContent = fontSize + 'px';
             document.getElementById('fontFamily').value = fontFamily;
             document.getElementById('boldButton').classList.toggle('active', textBold);
             document.getElementById('italicButton').classList.toggle('active', textItalic);
             
-            // Create container div for text controls (same structure as createTextInput)
-            const textContainer = document.createElement('div');
-            textContainer.style.position = 'absolute';
-            textContainer.style.left = (canvas.getBoundingClientRect().left + window.scrollX + textBox.x) + 'px';
-            textContainer.style.top = (canvas.getBoundingClientRect().top + window.scrollY + textBox.y - textBox.fontSize - 40) + 'px';
-            textContainer.style.zIndex = '1002';
-            textContainer.setAttribute('data-text-container', 'true');
-            
-            // Create text controls
-            const textControls = document.createElement('div');
-            textControls.style.background = 'rgba(0,0,0,0.8)';
-            textControls.style.color = 'white';
-            textControls.style.padding = '4px 8px';
-            textControls.style.borderRadius = '4px';
-            textControls.style.marginBottom = '4px';
-            textControls.style.fontSize = '12px';
-            textControls.style.whiteSpace = 'nowrap';
-            textControls.innerHTML = `
-                <label style="margin-right: 8px;">Font: 
-                    <input type="range" min="10" max="72" value="${fontSize}" 
-                           style="width: 60px; margin: 0 4px;" onchange="updateTextFontSize(this.value)">
-                    <span id="textFontSize">${fontSize}px</span>
-                </label>
-                <button onclick="applyTextFormat('bold')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">B</button>
-                <button onclick="applyTextFormat('italic')" style="margin: 0 2px; padding: 2px 6px; background: #333; color: white; border: 1px solid #555; border-radius: 2px;">I</button>
-            `;
-            
             // Create textarea with existing text
             textInput = document.createElement('textarea');
+            textInput.style.position = 'absolute';
+            
+            // Convert world coordinates to screen coordinates for positioning
+            const screenPos = worldToScreen(textBox.x, textBox.y);
+            textInput.style.left = (canvas.getBoundingClientRect().left + window.scrollX + screenPos.x) + 'px';
+            textInput.style.top = (canvas.getBoundingClientRect().top + window.scrollY + screenPos.y - (textBox.fontSize || fontSize) - 10) + 'px';
+            textInput.style.zIndex = '1002';
+            
             textInput.value = textBox.text;
             textInput.style.fontSize = fontSize + 'px';
             textInput.style.fontFamily = fontFamily;
@@ -1768,16 +1709,10 @@
             textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             textInput.style.lineHeight = '1.2';
             textInput.style.display = 'block';
-            textInput.placeholder = 'Type text here... (Ctrl+Enter to finish, Escape to cancel)';
+            textInput.placeholder = 'Type text...';
             textInput.setAttribute('data-text-input', 'true');
             
-            textContainer.appendChild(textControls);
-            textContainer.appendChild(textInput);
-            document.body.appendChild(textContainer);
-            
-            // Store references (crucial for proper cleanup)
-            window.currentTextContainer = textContainer;
-            window.currentTextControls = textControls;
+            document.body.appendChild(textInput);
             
             activeTextBox = {
                 x: textBox.x,
@@ -1862,17 +1797,10 @@
             }
         };
 
-        function handleTextKeydown(e) {
-            if (e.key === 'Enter' || e.key === 'Escape') {
-                finalizeTextInput();
-            }
-        }
-        
         function finalizeTextInput() {
             if (!textInput || !activeTextBox) return;
             
             const text = textInput.value.trim();
-            console.log('Finalizing text:', text);
             
             if (text) {
                 activeTextBox.text = text;
@@ -1888,24 +1816,20 @@
             }
             
             // Clean up
-            if (window.currentTextContainer && window.currentTextContainer.parentNode) {
-                document.body.removeChild(window.currentTextContainer);
+            if (textInput && textInput.parentNode) {
+                document.body.removeChild(textInput);
             }
             textInput = null;
             activeTextBox = null;
-            window.currentTextContainer = null;
-            window.currentTextControls = null;
         }
         
         function cancelTextInput() {
-            // Clean up the text container (which includes both controls and textarea)
-            if (window.currentTextContainer && window.currentTextContainer.parentNode) {
-                document.body.removeChild(window.currentTextContainer);
+            // Clean up
+            if (textInput && textInput.parentNode) {
+                document.body.removeChild(textInput);
             }
             textInput = null;
             activeTextBox = null;
-            window.currentTextContainer = null;
-            window.currentTextControls = null;
         }
         
         function drawText(textBox) {
@@ -1931,7 +1855,6 @@
             });
             
             ctx.restore();
-            console.log('Drew formatted text:', textBox.text, 'with font:', textBox.fontFamily, 'bold:', textBox.bold, 'italic:', textBox.italic);
         }
         
         function redrawCanvas() {
@@ -2012,9 +1935,6 @@
                 drawingHistory.shift();
                 historyStep--;
             }
-            
-            // Clear redo stack
-            redoStack = [];
         }
 
         function undoDrawing() {
@@ -2166,11 +2086,6 @@
             
             const ctrlKey = e.ctrlKey || e.metaKey;
             
-            // Show current state for debugging
-            if (ctrlKey && (e.key === 'c' || e.key === 'x' || e.key === 'v')) {
-                console.log('Keyboard shortcut:', e.key, 'selectedShape:', !!selectedShape, 'copiedShape:', !!copiedShape);
-            }
-            
             if (ctrlKey) {
                 switch(e.key.toLowerCase()) {
                     case 'z':
@@ -2216,7 +2131,6 @@
                             e.preventDefault();
                             e.stopPropagation();
                             copyShape();
-                            console.log('Shape copied');
                         }
                         break;
                     case 'x':
@@ -2225,7 +2139,6 @@
                             e.preventDefault();
                             e.stopPropagation();
                             cutShape();
-                            console.log('Shape cut');
                         }
                         break;
                     case 'v':
@@ -2234,9 +2147,6 @@
                         e.stopPropagation();
                         if (copiedShape) {
                             pasteShape();
-                            console.log('Shape pasted');
-                        } else {
-                            console.log('No shape to paste');
                         }
                         break;
                 }
@@ -2247,15 +2157,21 @@
                     e.stopPropagation();
                     deleteShape();
                 }
+            } else if (e.key === 'Escape') {
+                // Clear selection
+                if (selectedShape) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectedShape = null;
+                    redrawCanvas();
+                }
             }
         }
         
         // Shape manipulation functions
         function findShapeAt(x, y) {
-            console.log('findShapeAt called with', x, y, 'checking', shapes.length, 'shapes');
             for (let i = shapes.length - 1; i >= 0; i--) {
                 const shape = shapes[i];
-                console.log('checking shape', i, 'type:', shape.type, 'coords:', shape.x, shape.y, shape.width, shape.height);
                 
                 if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
                     // For lines/arrows, create a bounding box with larger padding for easier selection
@@ -2268,9 +2184,7 @@
                     if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
                         // Then check distance to actual line with more generous tolerance
                         const distance = distanceFromPointToLine(x, y, shape.x, shape.y, shape.width, shape.height);
-                        console.log('Line distance:', distance);
                         if (distance < 25) { // 25px tolerance for easier selection
-                            console.log('found line/arrow shape at', i);
                             return shape;
                         }
                     }
@@ -2278,12 +2192,10 @@
                     // For rectangles and circles, use bounding box with small padding
                     if (x >= shape.x - 5 && x <= shape.x + shape.width + 5 &&
                         y >= shape.y - 5 && y <= shape.y + shape.height + 5) {
-                        console.log('found shape at', i);
                         return shape;
                     }
                 }
             }
-            console.log('no shape found');
             return null;
         }
         
@@ -2521,7 +2433,6 @@
         function copyShape() {
             if (selectedShape) {
                 copiedShape = JSON.parse(JSON.stringify(selectedShape));
-                console.log('Shape copied to clipboard');
             }
         }
         
@@ -2529,7 +2440,6 @@
             if (selectedShape) {
                 copiedShape = JSON.parse(JSON.stringify(selectedShape));
                 deleteShape();
-                console.log('Shape cut to clipboard');
             }
         }
         
@@ -2543,9 +2453,8 @@
                 selectedShape = newShape;
                 redrawCanvas();
                 saveState();
-                console.log('Shape pasted at', newShape.x, newShape.y);
             } else {
-                console.log('No copied shape available');
+                // No copied shape available
             }
         }
         
@@ -2557,12 +2466,7 @@
                     selectedShape = null;
                     redrawCanvas();
                     saveState();
-                    console.log('Shape deleted');
-                } else {
-                    console.log('Selected shape not found in shapes array');
                 }
-            } else {
-                console.log('No shape selected to delete');
             }
         }
         
