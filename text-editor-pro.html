@@ -2276,6 +2276,27 @@ text</textarea>
         document.getElementById('editorContent').addEventListener('click', updateStatus);
         document.getElementById('editorContent').addEventListener('keyup', updateStatus);
         document.getElementById('editorContent').addEventListener('contextmenu', showTextContextMenu);
+        
+        // Handle Tab key in editor
+        document.getElementById('editorContent').addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const editor = e.target;
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                
+                // Insert 4 spaces at cursor position
+                const spaces = '    ';
+                editor.value = editor.value.substring(0, start) + spaces + editor.value.substring(end);
+                
+                // Move cursor to after the inserted spaces
+                editor.selectionStart = editor.selectionEnd = start + spaces.length;
+                
+                // Trigger input event to update file tracking
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+        
         document.addEventListener('click', hideContextMenus);
         
         // Enhanced keyboard shortcuts
@@ -2458,12 +2479,15 @@ text</textarea>
             editor.focus();
             editor.setSelectionRange(match.start, match.end);
             
-            // Scroll the match into view
+            // Scroll the match into view - enhanced scrolling
             const lines = editor.value.substring(0, match.start).split('\n');
             const lineNumber = lines.length;
-            const charHeight = 20; // Approximate character height
-            const scrollTop = (lineNumber - 1) * charHeight;
-            editor.scrollTop = Math.max(0, scrollTop - editor.clientHeight / 2);
+            const lineHeight = parseInt(window.getComputedStyle(editor).lineHeight) || 20;
+            const scrollTop = (lineNumber - 1) * lineHeight;
+            
+            // Center the match in the viewport
+            const targetScroll = Math.max(0, scrollTop - editor.clientHeight / 2);
+            editor.scrollTop = targetScroll;
         }
         
         function clearSearchHighlights() {
@@ -2474,6 +2498,12 @@ text</textarea>
             if (statusElement) {
                 statusElement.textContent = '';
             }
+        }
+        
+        function getLineNumber(charIndex) {
+            const editor = document.getElementById('editorContent');
+            const content = editor.value.substring(0, charIndex);
+            return content.split('\n').length;
         }
         
         function findNext() {
@@ -2498,7 +2528,7 @@ text</textarea>
                 if (searchMatches.length > 0) {
                     navigateToMatch(currentSearchIndex);
                     document.getElementById('findReplaceStatus').textContent = 
-                        `Match ${currentSearchIndex + 1}/${searchMatches.length} in current file`;
+                        `Match ${currentSearchIndex + 1}/${searchMatches.length} - Line ${getLineNumber(searchMatches[currentSearchIndex].start)}`;
                 } else {
                     document.getElementById('findReplaceStatus').textContent = 'No matches found in current file';
                 }
@@ -2529,7 +2559,7 @@ text</textarea>
                 if (searchMatches.length > 0) {
                     navigateToMatch(currentSearchIndex);
                     document.getElementById('findReplaceStatus').textContent = 
-                        `Match ${currentSearchIndex + 1}/${searchMatches.length} in current file`;
+                        `Match ${currentSearchIndex + 1}/${searchMatches.length} - Line ${getLineNumber(searchMatches[currentSearchIndex].start)}`;
                 } else {
                     document.getElementById('findReplaceStatus').textContent = 'No matches found in current file';
                 }
@@ -2829,7 +2859,7 @@ text</textarea>
                     currentSearchIndex = (currentSearchIndex + 1) % searchMatches.length;
                 }
                 document.getElementById('findReplaceStatus').textContent = 
-                    `Found ${searchMatches.length} matches in current file. Current: ${(currentSearchIndex + 1)}/${searchMatches.length}`;
+                    `Found ${searchMatches.length} matches - Current: ${(currentSearchIndex + 1)}/${searchMatches.length} at Line ${getLineNumber(searchMatches[currentSearchIndex].start)}`;
             } else {
                 document.getElementById('findReplaceStatus').textContent = 'No matches found in current file';
             }

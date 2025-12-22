@@ -597,12 +597,12 @@
         
         // Shape manipulation variables
         let selectedShape = null;
+        let selectedTextBox = null;
         let isDragging = false;
+        let isDraggingText = false;
         let isResizing = false;
         let resizeHandle = null;
         let dragOffsetX = 0, dragOffsetY = 0;
-        let rotationStartAngle = 0;
-        let shapeStartAngle = 0;
         
         // Viewport variables for infinite scroll
         let viewportX = 0;
@@ -763,6 +763,29 @@
             // Add keyboard shortcuts
             document.addEventListener('keydown', handleKeyboardShortcuts);
             
+            // Add double-click for text editing
+            canvas.addEventListener('dblclick', function(e) {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const screenX = (e.clientX || e.touches[0].clientX) - rect.left;
+                const screenY = (e.clientY || e.touches[0].clientY) - rect.top;
+                const worldPos = screenToWorld(screenX, screenY);
+                const x = worldPos.x;
+                const y = worldPos.y;
+                
+                if (currentTool === 'text' && selectedTextBox) {
+                    editExistingText(selectedTextBox);
+                    selectedTextBox = null;
+                    redrawCanvas();
+                } else {
+                    // Check if double-clicking on a shape (only 2D shapes support text)
+                    const clickedShape = findShapeAt(x, y);
+                    if (clickedShape && (clickedShape.type === 'rectangle' || clickedShape.type === 'circle')) {
+                        editShapeText(clickedShape);
+                    }
+                }
+            });
+            
             // Add global click handler to clear selection when clicking outside
             document.addEventListener('click', handleGlobalClick);
         }
@@ -872,41 +895,9 @@
                 if (clickedShape) {
                     // Only select this shape, clear any previous selection
                     selectedShape = clickedShape;
-                    // Check if clicking on resize/rotation handle
+                    // Check if clicking on resize handle
                     const handle = getResizeHandle(x, y, clickedShape);
-                    if (handle === 'rotate') {
-                        isResizing = true;
-                        resizeHandle = 'rotate';
-                        // Calculate rotation center based on corrected selection bounds
-                        let selectionX, selectionY, selectionWidth, selectionHeight;
-                        if (clickedShape.type === 'line' || clickedShape.type === 'arrow' || clickedShape.type === 'double-arrow') {
-                            const startX = clickedShape.x;
-                            const startY = clickedShape.y;
-                            const endX = clickedShape.width;
-                            const endY = clickedShape.height;
-                            selectionX = Math.min(startX, endX) - 10;
-                            selectionY = Math.min(startY, endY) - 10;
-                            selectionWidth = Math.abs(endX - startX) + 20;
-                            selectionHeight = Math.abs(endY - startY) + 20;
-                            if (selectionWidth < 40) {
-                                selectionX -= (40 - selectionWidth) / 2;
-                                selectionWidth = 40;
-                            }
-                            if (selectionHeight < 40) {
-                                selectionY -= (40 - selectionHeight) / 2;
-                                selectionHeight = 40;
-                            }
-                        } else {
-                            selectionX = clickedShape.x - 3;
-                            selectionY = clickedShape.y - 3;
-                            selectionWidth = clickedShape.width + 6;
-                            selectionHeight = clickedShape.height + 6;
-                        }
-                        const centerX = selectionX + selectionWidth/2;
-                        const centerY = selectionY + selectionHeight/2;
-                        rotationStartAngle = Math.atan2(y - centerY, x - centerX);
-                        shapeStartAngle = clickedShape.angle || 0;
-                    } else if (handle) {
+                    if (handle) {
                         isResizing = true;
                         resizeHandle = handle;
                     } else {
@@ -929,8 +920,9 @@
             }
             
             // Handle clicking empty space (no shape found) with non-shape tools
-            if (selectedShape) {
+            if (selectedShape || selectedTextBox) {
                 selectedShape = null;
+                selectedTextBox = null;
                 redrawCanvas();
             }
             
@@ -968,7 +960,7 @@
 
         function updateCursor(e) {
             // Don't change cursor while drawing/dragging/resizing
-            if (isDrawing || isDragging || isResizing || isDrawingShape) return;
+            if (isDrawing || isDragging || isResizing || isDrawingShape || isDraggingText) return;
             
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
@@ -977,6 +969,16 @@
             const x = worldPos.x;
             const y = worldPos.y;
             
+            // Check for text boxes when using text tool
+            if (currentTool === 'text') {
+                const hoveredText = findTextAt(x, y);
+                if (hoveredText) {
+                    canvas.style.cursor = 'move';
+                    canvas.title = 'Click to drag text, double-click to edit';
+                    return;
+                }
+            }
+            
             // Check if we're over a shape manipulation tool
             if (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
                 const hoveredShape = findShapeAt(x, y);
@@ -984,10 +986,7 @@
                 if (hoveredShape) {
                     const handle = getResizeHandle(x, y, hoveredShape);
                     
-                    if (handle === 'rotate') {
-                        canvas.style.cursor = 'grab';
-                        canvas.title = 'Drag to rotate shape';
-                    } else if (handle === 'nw' || handle === 'se') {
+                    if (handle === 'nw' || handle === 'se') {
                         canvas.style.cursor = 'nw-resize';
                         canvas.title = 'Drag to resize';
                     } else if (handle === 'ne' || handle === 'sw') {
@@ -1048,49 +1047,24 @@
                 return;
             }
             
+            // Handle text box dragging
+            if (isDraggingText && selectedTextBox) {
+                canvas.style.cursor = 'move';
+                selectedTextBox.x = currentX - dragOffsetX;
+                selectedTextBox.y = currentY - dragOffsetY;
+                redrawCanvas();
+                return;
+            }
+            
             // Handle shape resizing
             if (isResizing && selectedShape && resizeHandle) {
-                if (resizeHandle === 'rotate') {
-                    canvas.style.cursor = 'grab';
-                    // Calculate rotation angle properly
-                    let selectionX, selectionY, selectionWidth, selectionHeight;
-                    if (selectedShape.type === 'line' || selectedShape.type === 'arrow' || selectedShape.type === 'double-arrow') {
-                        const startX = selectedShape.x;
-                        const startY = selectedShape.y;
-                        const endX = selectedShape.width;
-                        const endY = selectedShape.height;
-                        selectionX = Math.min(startX, endX) - 10;
-                        selectionY = Math.min(startY, endY) - 10;
-                        selectionWidth = Math.abs(endX - startX) + 20;
-                        selectionHeight = Math.abs(endY - startY) + 20;
-                        if (selectionWidth < 40) {
-                            selectionX -= (40 - selectionWidth) / 2;
-                            selectionWidth = 40;
-                        }
-                        if (selectionHeight < 40) {
-                            selectionY -= (40 - selectionHeight) / 2;
-                            selectionHeight = 40;
-                        }
-                    } else {
-                        selectionX = selectedShape.x - 3;
-                        selectionY = selectedShape.y - 3;
-                        selectionWidth = selectedShape.width + 6;
-                        selectionHeight = selectedShape.height + 6;
-                    }
-                    const centerX = selectionX + selectionWidth / 2;
-                    const centerY = selectionY + selectionHeight / 2;
-                    const currentAngle = Math.atan2(currentY - centerY, currentX - centerX);
-                    const angleDiff = currentAngle - rotationStartAngle;
-                    selectedShape.angle = shapeStartAngle + angleDiff;
-                } else {
-                    // Set appropriate resize cursor
-                    if (resizeHandle === 'nw' || resizeHandle === 'se') {
-                        canvas.style.cursor = 'nw-resize';
-                    } else if (resizeHandle === 'ne' || resizeHandle === 'sw') {
-                        canvas.style.cursor = 'ne-resize';
-                    }
-                    resizeShape(selectedShape, currentX, currentY, resizeHandle);
+                // Set appropriate resize cursor
+                if (resizeHandle === 'nw' || resizeHandle === 'se') {
+                    canvas.style.cursor = 'nw-resize';
+                } else if (resizeHandle === 'ne' || resizeHandle === 'sw') {
+                    canvas.style.cursor = 'ne-resize';
                 }
+                resizeShape(selectedShape, currentX, currentY, resizeHandle);
                 redrawCanvas();
                 return;
             }
@@ -1158,7 +1132,10 @@
                         color: currentColor,
                         lineWidth: currentSize,
                         angle: 0,
-                        id: Date.now()
+                        id: Date.now(),
+                        text: '',
+                        fontSize: 16,
+                        fontFamily: 'Arial'
                     };
                     shapes.push(shape);
                     // Don't auto-select the new shape to avoid unwanted behavior
@@ -1171,13 +1148,16 @@
             }
             
             // Handle shape manipulation end
-            if (isDragging || isResizing) {
+            if (isDragging || isResizing || isDraggingText) {
                 isDragging = false;
+                isDraggingText = false;
                 isResizing = false;
                 resizeHandle = null;
                 // Reset cursor to default for the current tool
                 if (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
                     canvas.style.cursor = 'crosshair';
+                } else if (currentTool === 'text') {
+                    canvas.style.cursor = 'text';
                 }
                 saveState();
                 return;
@@ -1237,8 +1217,9 @@
             if (isDragging || isResizing) return;
             
             // Clear selection when clicking anywhere else (buttons, menus, toolbar, etc.)
-            if (selectedShape) {
+            if (selectedShape || selectedTextBox) {
                 selectedShape = null;
+                selectedTextBox = null;
                 redrawCanvas();
             }
         }
@@ -1250,8 +1231,9 @@
             }
             
             // Clear selection when switching tools
-            if (selectedShape) {
+            if (selectedShape || selectedTextBox) {
                 selectedShape = null;
+                selectedTextBox = null;
                 redrawCanvas();
             }
             
@@ -1496,11 +1478,25 @@
             // Check if clicking on existing text first
             const existingText = findTextAt(x, y);
             if (existingText) {
+                // Select text for dragging
+                selectedTextBox = existingText;
+                selectedShape = null; // Clear shape selection
+                isDraggingText = true;
+                dragOffsetX = x - existingText.x;
+                dragOffsetY = y - existingText.y;
+                
                 if (activeTextBox && textInput) {
                     finalizeTextInput();
                 }
-                setTimeout(() => editExistingText(existingText), 50);
+                redrawCanvas();
                 return;
+            }
+            
+            // Clear any existing selections when clicking on empty space
+            if (selectedTextBox || selectedShape) {
+                selectedTextBox = null;
+                selectedShape = null;
+                redrawCanvas();
             }
             
             // Finalize any current text input first
@@ -1578,11 +1574,10 @@
             textInput.style.fontFamily = 'Arial, sans-serif';
             textInput.style.padding = '6px 8px';
             textInput.style.minWidth = '100px';
-            textInput.style.minHeight = (fontSize + 12) + 'px';
             textInput.style.resize = 'both';
-            textInput.style.overflow = 'hidden';
+            textInput.style.overflow = 'auto'; // Allow scrolling for long content
+            textInput.style.whiteSpace = 'pre'; // Preserve whitespace and allow long lines
             textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-            textInput.style.lineHeight = '1.2';
             textInput.style.display = 'block';
             textInput.placeholder = 'Type text...';
             textInput.setAttribute('data-text-input', 'true');
@@ -1611,11 +1606,11 @@
             // Auto-resize function
             function autoResize() {
                 textInput.style.height = 'auto';
-                textInput.style.height = Math.max(fontSize + 12, textInput.scrollHeight) + 'px';
+                textInput.style.height = textInput.scrollHeight + 'px'; // Remove min height constraint
                 textInput.style.width = 'auto';
                 const minWidth = 100;
-                const maxWidth = canvas.width - x - 20;
-                const textWidth = Math.min(Math.max(minWidth, textInput.scrollWidth + 10), maxWidth);
+                // Remove maxWidth constraint to allow free-form longer lines
+                const textWidth = Math.max(minWidth, textInput.scrollWidth + 10);
                 textInput.style.width = textWidth + 'px';
             }
             
@@ -1703,9 +1698,9 @@
             textInput.style.fontFamily = 'Arial, sans-serif';
             textInput.style.padding = '6px 8px';
             textInput.style.minWidth = '100px';
-            textInput.style.minHeight = (fontSize + 12) + 'px';
             textInput.style.resize = 'both';
-            textInput.style.overflow = 'hidden';
+            textInput.style.overflow = 'auto'; // Allow scrolling for long content
+            textInput.style.whiteSpace = 'pre'; // Preserve whitespace and allow long lines
             textInput.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
             textInput.style.lineHeight = '1.2';
             textInput.style.display = 'block';
@@ -1728,11 +1723,11 @@
             // Auto-resize function
             function autoResize() {
                 textInput.style.height = 'auto';
-                textInput.style.height = Math.max(textBox.fontSize + 12, textInput.scrollHeight) + 'px';
+                textInput.style.height = textInput.scrollHeight + 'px'; // Remove min height constraint
                 textInput.style.width = 'auto';
                 const minWidth = 100;
-                const maxWidth = canvas.width - textBox.x - 20;
-                const textWidth = Math.min(Math.max(minWidth, textInput.scrollWidth + 10), maxWidth);
+                // Remove maxWidth constraint to allow free-form longer lines
+                const textWidth = Math.max(minWidth, textInput.scrollWidth + 10);
                 textInput.style.width = textWidth + 'px';
             }
             
@@ -1857,6 +1852,42 @@
             ctx.restore();
         }
         
+        function drawTextSelection(textBox) {
+            // Convert text box bounds to screen coordinates for selection highlight
+            ctx.save();
+            
+            // Calculate text dimensions
+            let fontString = '';
+            if (textBox.bold) fontString += 'bold ';
+            if (textBox.italic) fontString += 'italic ';
+            fontString += (textBox.fontSize || fontSize) + 'px ' + (textBox.fontFamily || 'Arial') + ', sans-serif';
+            ctx.font = fontString;
+            
+            const lines = textBox.text.split('\n');
+            const lineHeight = (textBox.fontSize || fontSize) * 1.2;
+            let maxWidth = 0;
+            
+            lines.forEach(line => {
+                const lineWidth = ctx.measureText(line).width;
+                maxWidth = Math.max(maxWidth, lineWidth);
+            });
+            
+            const totalHeight = lines.length * lineHeight;
+            
+            // Convert to screen coordinates
+            const topLeft = worldToScreen(textBox.x, textBox.y - (textBox.fontSize || fontSize));
+            const bottomRight = worldToScreen(textBox.x + maxWidth, textBox.y - (textBox.fontSize || fontSize) + totalHeight);
+            
+            // Draw selection rectangle
+            ctx.strokeStyle = '#007acc';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(topLeft.x - 2, topLeft.y - 2, bottomRight.x - topLeft.x + 4, bottomRight.y - topLeft.y + 4);
+            ctx.setLineDash([]);
+            
+            ctx.restore();
+        }
+        
         function redrawCanvas() {
             // Don't redraw if currently drawing with pen/eraser to avoid interrupting strokes
             if (isDrawing && (currentTool === 'pen' || currentTool === 'eraser')) {
@@ -1896,6 +1927,11 @@
             // Draw selection highlight last (in screen coordinates)
             if (selectedShape) {
                 drawSelection(selectedShape);
+            }
+            
+            // Draw text box selection highlight
+            if (selectedTextBox) {
+                drawTextSelection(selectedTextBox);
             }
         }
 
@@ -2261,14 +2297,6 @@
                 selectionHeight = shape.height + 6;
             }
             
-            // Check rotation handle first (orange circle above shape)
-            const rotateX = selectionX + selectionWidth / 2;
-            const rotateY = selectionY - 30;
-            const rotateDistance = Math.sqrt((x - rotateX) * (x - rotateX) + (y - rotateY) * (y - rotateY));
-            if (rotateDistance <= 10) { // 10px radius for rotation handle
-                return 'rotate';
-            }
-            
             const handles = [
                 { name: 'nw', x: selectionX, y: selectionY },
                 { name: 'ne', x: selectionX + selectionWidth, y: selectionY },
@@ -2392,41 +2420,6 @@
                 ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
             });
             
-            // Draw rotation handle (larger circle above the shape)
-            const rotateX = selectionX + selectionWidth / 2;
-            const rotateY = selectionY - 30; // Move further up for better visibility
-            ctx.fillStyle = '#ff6b35'; // Orange color for rotation
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(rotateX, rotateY, 10, 0, 2 * Math.PI); // Larger handle
-            ctx.fill();
-            ctx.stroke();
-            
-            // Add rotation icon inside handle
-            ctx.save();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(rotateX, rotateY, 6, 0.2, 1.8 * Math.PI);
-            ctx.stroke();
-            // Add arrow to rotation icon
-            ctx.beginPath();
-            ctx.moveTo(rotateX + 4, rotateY - 4);
-            ctx.lineTo(rotateX + 6, rotateY - 2);
-            ctx.lineTo(rotateX + 4, rotateY);
-            ctx.stroke();
-            ctx.restore();
-            
-            // Draw line connecting rotation handle to shape
-            ctx.strokeStyle = '#007acc';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([2, 2]);
-            ctx.beginPath();
-            ctx.moveTo(rotateX, rotateY + 10);
-            ctx.lineTo(selectionX + selectionWidth/2, selectionY);
-            ctx.stroke();
-            
             ctx.restore();
         }
         
@@ -2477,23 +2470,6 @@
             ctx.lineWidth = shape.lineWidth;
             ctx.fillStyle = 'transparent';
             
-            // Apply rotation if shape has angle
-            if (shape.angle && shape.angle !== 0) {
-                let centerX, centerY;
-                if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
-                    // For line-based shapes, use midpoint of the line
-                    centerX = (shape.x + shape.width) / 2;
-                    centerY = (shape.y + shape.height) / 2;
-                } else {
-                    // For rectangles and circles, use geometric center
-                    centerX = shape.x + shape.width / 2;
-                    centerY = shape.y + shape.height / 2;
-                }
-                ctx.translate(centerX, centerY);
-                ctx.rotate(shape.angle);
-                ctx.translate(-centerX, -centerY);
-            }
-
             ctx.beginPath();
             if (shape.type === 'rectangle') {
                 ctx.rect(shape.x, shape.y, shape.width, shape.height);
@@ -2513,6 +2489,12 @@
             if (shape.type !== 'arrow' && shape.type !== 'double-arrow') {
                 ctx.stroke();
             }
+            
+            // Draw text if it exists
+            if (shape.text && shape.text.trim() !== '') {
+                drawShapeText(shape);
+            }
+            
             ctx.restore();
         }
 
@@ -2583,6 +2565,130 @@
             context.moveTo(startX, startY);
             context.lineTo(startX + headLength * Math.cos(angle + Math.PI / 6), startY + headLength * Math.sin(angle + Math.PI / 6));
             context.stroke();
+        }
+
+        // Shape text editing functions
+        function editShapeText(shape) {
+            // Only allow text editing for 2D shapes
+            if (shape.type !== 'rectangle' && shape.type !== 'circle') {
+                return;
+            }
+            
+            // Calculate text position
+            let centerX, centerY;
+            
+            if (shape.type === 'rectangle') {
+                centerX = shape.x + shape.width / 2;
+                centerY = shape.y + shape.height / 2;
+            } else if (shape.type === 'circle') {
+                centerX = shape.x + shape.width / 2;
+                centerY = shape.y + shape.height / 2;
+            }
+            
+            // Convert to screen coordinates
+            const screenPos = worldToScreen(centerX, centerY);
+            
+            // Create text input element
+            const textInput = document.createElement('textarea');
+            textInput.value = shape.text || '';
+            textInput.style.position = 'absolute';
+            textInput.style.left = (canvas.getBoundingClientRect().left + window.scrollX + screenPos.x - 100) + 'px'; // Center the textarea
+            textInput.style.top = (canvas.getBoundingClientRect().top + window.scrollY + screenPos.y - 40) + 'px';
+            textInput.style.width = '200px';
+            textInput.style.height = '80px';
+            textInput.style.fontSize = (shape.fontSize || 16) + 'px';
+            textInput.style.fontFamily = shape.fontFamily || 'Arial';
+            textInput.style.color = shape.color;
+            textInput.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+            textInput.style.border = '2px solid ' + shape.color;
+            textInput.style.borderRadius = '4px';
+            textInput.style.padding = '5px';
+            textInput.style.zIndex = '1000';
+            textInput.style.resize = 'none';
+            
+            document.body.appendChild(textInput);
+            textInput.focus();
+            textInput.select();
+            
+            // Handle text input completion
+            function finishEditing() {
+                shape.text = textInput.value;
+                document.body.removeChild(textInput);
+                redrawCanvas();
+                saveState();
+            }
+            
+            textInput.addEventListener('blur', finishEditing);
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.body.removeChild(textInput);
+                } else if (e.key === 'Enter' && e.ctrlKey) {
+                    finishEditing();
+                }
+                e.stopPropagation();
+            });
+        }
+
+        function drawShapeText(shape) {
+            if (!shape.text || shape.text.trim() === '') return;
+
+            ctx.save();
+            ctx.fillStyle = shape.color;
+            ctx.font = `${shape.fontSize || 16}px ${shape.fontFamily || 'Arial'}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            let centerX, centerY;
+
+            if (shape.type === 'rectangle') {
+                centerX = shape.x + shape.width / 2;
+                centerY = shape.y + shape.height / 2;
+            } else if (shape.type === 'circle') {
+                centerX = shape.x + shape.width / 2;
+                centerY = shape.y + shape.height / 2;
+            } else {
+                // Skip text rendering for 1D shapes
+                ctx.restore();
+                return;
+            }
+
+            // Split text into lines for better display
+            const words = shape.text.split('\n'); // Support manual line breaks
+            const maxWidth = shape.type === 'rectangle' ? shape.width - 10 : 
+                           shape.type === 'circle' ? Math.min(shape.width, shape.height) * 0.7 : 200;
+            const lines = [];
+            
+            words.forEach(line => {
+                if (line.trim() === '') {
+                    lines.push('');
+                    return;
+                }
+                
+                const lineWords = line.split(' ');
+                let currentLine = lineWords[0];
+
+                for (let i = 1; i < lineWords.length; i++) {
+                    const word = lineWords[i];
+                    const width = ctx.measureText(currentLine + ' ' + word).width;
+                    if (width < maxWidth) {
+                        currentLine += ' ' + word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                lines.push(currentLine);
+            });
+
+            // Draw each line
+            const lineHeight = (shape.fontSize || 16) * 1.2;
+            const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
+
+            lines.forEach((line, index) => {
+                ctx.fillText(line, centerX, startY + index * lineHeight);
+            });
+
+            ctx.restore();
         }
 
         // Initialize canvas when page loads
