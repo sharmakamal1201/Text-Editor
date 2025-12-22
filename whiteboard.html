@@ -351,6 +351,40 @@
             border-color: var(--accent-color);
         }
 
+        .shape-btn {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-tertiary);
+            color: var(--text-color);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2px;
+        }
+
+        .shape-btn.active {
+            border-color: var(--accent-color);
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 0 1px var(--accent-color);
+        }
+
+        .shape-btn:hover {
+            border-color: var(--accent-color);
+            background: var(--bg-secondary);
+        }
+
+        .shape-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
         .color-picker {
             width: 28px;
             height: 28px;
@@ -432,16 +466,6 @@
             </div>
         </div>
         <div class="menu-item">
-            Insert
-            <div class="dropdown-menu">
-                <button class="dropdown-item" onclick="setDrawingTool('rectangle')">Rectangle</button>
-                <button class="dropdown-item" onclick="setDrawingTool('circle')">Circle</button>
-                <button class="dropdown-item" onclick="setDrawingTool('line')">Line</button>
-                <button class="dropdown-item" onclick="setDrawingTool('arrow')">Arrow</button>
-                <button class="dropdown-item" onclick="setDrawingTool('double-arrow')">Double Arrow</button>
-            </div>
-        </div>
-        <div class="menu-item">
             View
             <div class="dropdown-menu">
                 <button class="dropdown-item" onclick="toggleTheme()">Toggle Theme</button>
@@ -460,49 +484,19 @@
             <!-- Drawing Tools Toolbar -->
             <div class="toolbar">
                 <div class="tool-group">
-                    <button id="penTool" class="tool-btn active" onclick="setDrawingTool('pen')">
-                        <span>✏️</span>Pen
-                    </button>
-                    <button id="eraserTool" class="tool-btn" onclick="setDrawingTool('eraser')">
-                        <span>🧹</span>Eraser
-                    </button>
-                    <button id="textTool" class="tool-btn" onclick="setDrawingTool('text')">
+                    <button id="textTool" class="tool-btn active" onclick="setDrawingTool('text')">
                         <span>Aa</span>Text
+                    </button>
+                    <button id="shapeTool" class="tool-btn" onclick="setDrawingTool('shape')">
+                        <span>□</span>Shape
                     </button>
                 </div>
                 
                 <div class="tool-separator"></div>
                 
-                <!-- Pen Tool Controls -->
-                <div id="penControls" class="tool-group" style="display: flex;">
-                    <div class="color-palette">
-                        <button class="color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
-                        <button class="color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
-                        <button class="color-btn" style="background: #00ff00;" onclick="setDrawingColor('#00ff00')" title="Green"></button>
-                        <input type="color" class="color-picker" onchange="selectCustomColor(this)" title="Custom Color">
-                    </div>
-                </div>
+
                 
-                <div id="penSeparator1" class="tool-separator" style="display: flex;"></div>
-                
-                <div id="penSizeControls" class="tool-group" style="display: flex;">
-                    <input type="range" id="brushSize" min="1" max="20" value="3" onchange="setBrushSize(this.value)">
-                    <span id="sizeDisplay">3px</span>
-                </div>
-                
-                <div id="penSeparator2" class="tool-separator" style="display: flex;"></div>
-                
-                <div id="penAlphaControls" class="tool-group" style="display: flex;">
-                    <label for="penAlpha">Opacity:</label>
-                    <input type="range" id="penAlpha" min="0.1" max="1" step="0.1" value="1" onchange="setPenAlpha(this.value)">
-                    <span id="alphaDisplay">100%</span>
-                </div>
-                
-                <!-- Eraser Tool Controls -->
-                <div id="eraserControls" class="tool-group" style="display: none;">
-                    <input type="range" id="eraserSize" min="5" max="50" value="15" onchange="setEraserSize(this.value)">
-                    <span id="eraserSizeDisplay">15px</span>
-                </div>
+
                 
                 <!-- Text Tool Controls -->
                 <div id="textControls" class="tool-group" style="display: none;">
@@ -545,6 +539,39 @@
                         <input type="color" class="color-picker" onchange="selectCustomColor(this)" title="Custom Color">
                     </div>
                 </div>
+                
+                <!-- Shape Tool Controls -->
+                <div id="shapeControls" class="tool-group" style="display: none;">
+                    <div class="shape-palette">
+                        <button class="shape-btn active" onclick="setShapeType('move')" title="Move/Pan Tool" data-shape="move">👆</button>
+                        <button class="shape-btn" onclick="setShapeType('freehand')" title="Freehand Drawing" data-shape="freehand">✏️</button>
+                        <button class="shape-btn" onclick="setShapeType('rectangle')" title="Rectangle" data-shape="rectangle">□</button>
+                        <button class="shape-btn" onclick="setShapeType('oval')" title="Oval" data-shape="oval">○</button>
+                        <button class="shape-btn" onclick="setShapeType('kite')" title="Kite" data-shape="kite">◇</button>
+                        <button class="shape-btn" onclick="setShapeType('cylinder')" title="Cylinder" data-shape="cylinder">🛢</button>
+                        <button class="shape-btn" onclick="setShapeType('line')" title="Line" data-shape="line">─</button>
+                        <button class="shape-btn" onclick="setShapeType('arrow')" title="Arrow" data-shape="arrow">→</button>
+                        <button class="shape-btn" onclick="setShapeType('double-arrow')" title="Double Arrow" data-shape="double-arrow">↔</button>
+                    </div>
+                </div>
+                
+                <div id="shapeSeparator1" class="tool-separator" style="display: none;"></div>
+                
+                <div id="shapeSizeControls" class="tool-group" style="display: none;">
+                    <input type="range" id="shapeSize" min="1" max="20" value="3" onchange="setShapeSize(this.value)">
+                    <span id="shapeSizeDisplay">3px</span>
+                </div>
+                
+                <div id="shapeSeparator2" class="tool-separator" style="display: none;"></div>
+                
+                <div id="shapeColorControls" class="tool-group" style="display: none;">
+                    <div class="color-palette">
+                        <button class="color-btn shape-color-btn active" style="background: #ff0000;" onclick="setDrawingColor('#ff0000')" title="Red"></button>
+                        <button class="color-btn shape-color-btn" style="background: #0000ff;" onclick="setDrawingColor('#0000ff')" title="Blue"></button>
+                        <button class="color-btn shape-color-btn" style="background: #00ff00;" onclick="setDrawingColor('#00ff00')" title="Green"></button>
+                        <input type="color" class="color-picker" onchange="selectCustomColor(this)" title="Custom Color">
+                    </div>
+                </div>
             </div>
 
             <!-- Drawing Canvas -->
@@ -555,7 +582,7 @@
             <!-- Status Bar -->
             <div class="status-bar">
                 <span>Mode: Whiteboard</span>
-                <span>Tool: <span id="currentTool">Pen</span></span>
+                <span>Tool: <span id="currentTool">Text</span></span>
                 <span>Size: <span id="currentSizeDisplay">3px</span></span>
                 <span>Canvas: <span id="canvasSize">Loading...</span></span>
                 <span>Zoom: <span id="zoomDisplay">100%</span></span>
@@ -567,13 +594,9 @@
     <script>
         // Drawing functionality
         let canvas, ctx;
-        let tempCanvas, tempCtx; // For transparent drawing
-        let isDrawing = false;
-        let currentTool = 'pen';
+        let currentTool = 'text'; // Default to text tool
         let currentColor = '#ff0000';
         let currentSize = 3;
-        let penAlpha = 1;
-        let lastX, lastY;
         
         // Undo/Redo state management
         let drawingHistory = [];
@@ -586,12 +609,12 @@
         let textInput = null;
         let fontSize = 16; // Initialize with default value
         
-        // Eraser specific variables
-        let eraserSize = 15;
-        
         // Shape tool variables
+        let currentShapeType = 'move';
         let shapes = [];
         let isDrawingShape = false;
+        let isDrawingFreehand = false;
+        let freehandPath = [];
         let startX, startY;
         let copiedShape = null;
         
@@ -642,11 +665,15 @@
         }
         
         function switchToWhiteboard(whiteboardId) {
-            // Save current whiteboard state
+            // Save current whiteboard state including objects
             if (canvas) {
                 const currentWb = getCurrentWhiteboard();
                 if (currentWb) {
-                    currentWb.data = canvas.toDataURL();
+                    currentWb.data = {
+                        imageData: canvas.toDataURL(),
+                        shapes: JSON.parse(JSON.stringify(shapes)),
+                        textBoxes: JSON.parse(JSON.stringify(textBoxes))
+                    };
                 }
             }
             
@@ -656,14 +683,24 @@
             // Load the switched whiteboard
             const targetWb = getCurrentWhiteboard();
             if (targetWb && targetWb.data && canvas) {
-                const img = new Image();
-                img.onload = function() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                };
-                img.src = targetWb.data;
-            } else if (canvas) {
+                // Restore objects first
+                if (targetWb.data.shapes) {
+                    shapes.length = 0;
+                    shapes.push(...targetWb.data.shapes);
+                }
+                if (targetWb.data.textBoxes) {
+                    textBoxes.length = 0;
+                    textBoxes.push(...targetWb.data.textBoxes);
+                }
+                
+                // Clear and redraw canvas with objects
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas();
+            } else if (canvas) {
+                // Clear everything for new whiteboard
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                shapes.length = 0;
+                textBoxes.length = 0;
             }
         }
         
@@ -711,13 +748,25 @@
             });
         }
 
+        function ensureObjectIds() {
+            // Ensure all shapes have IDs
+            shapes.forEach(shape => {
+                if (!shape.id) {
+                    shape.id = Date.now() + Math.random();
+                }
+            });
+            
+            // Ensure all text boxes have IDs
+            textBoxes.forEach(textBox => {
+                if (!textBox.id) {
+                    textBox.id = Date.now() + Math.random();
+                }
+            });
+        }
+
         function initCanvas() {
             canvas = document.getElementById('drawingCanvas');
             ctx = canvas.getContext('2d');
-            
-            // Create off-screen canvas for transparent drawing
-            tempCanvas = document.createElement('canvas');
-            tempCtx = tempCanvas.getContext('2d');
             
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
@@ -757,11 +806,54 @@
                 }
             });
             
-            // Save initial state
+            // Ensure all objects have IDs and save initial state
+            ensureObjectIds();
             saveState();
             
             // Add keyboard shortcuts
             document.addEventListener('keydown', handleKeyboardShortcuts);
+            
+            function handleKeyboardShortcuts(e) {
+                // Delete key - delete selected shape or text
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (selectedShape) {
+                        // Remove selected shape
+                        const shapeIndex = shapes.findIndex(s => s.id === selectedShape.id);
+                        if (shapeIndex !== -1) {
+                            shapes.splice(shapeIndex, 1);
+                            selectedShape = null;
+                            redrawCanvas();
+                            saveState();
+                        }
+                    } else if (selectedTextBox) {
+                        // Ensure text box has an ID for proper deletion
+                        if (!selectedTextBox.id) {
+                            selectedTextBox.id = Date.now();
+                        }
+                        
+                        // Remove selected text box
+                        const textIndex = textBoxes.findIndex(t => t.id === selectedTextBox.id);
+                        if (textIndex !== -1) {
+                            textBoxes.splice(textIndex, 1);
+                            selectedTextBox = null;
+                            redrawCanvas();
+                            saveState();
+                        }
+                    }
+                }
+                
+                // Ctrl+Z for undo
+                if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    undoDrawing();
+                }
+                
+                // Ctrl+Shift+Z or Ctrl+Y for redo
+                if ((e.ctrlKey && e.shiftKey && e.key === 'Z') || (e.ctrlKey && e.key === 'y')) {
+                    e.preventDefault();
+                    redoDrawing();
+                }
+            }
             
             // Add double-click for text editing
             canvas.addEventListener('dblclick', function(e) {
@@ -780,7 +872,7 @@
                 } else {
                     // Check if double-clicking on a shape (only 2D shapes support text)
                     const clickedShape = findShapeAt(x, y);
-                    if (clickedShape && (clickedShape.type === 'rectangle' || clickedShape.type === 'circle')) {
+                    if (clickedShape && (clickedShape.type === 'rectangle' || clickedShape.type === 'oval' || clickedShape.type === 'kite' || clickedShape.type === 'cylinder')) {
                         editShapeText(clickedShape);
                     }
                 }
@@ -848,18 +940,10 @@
             canvas.width = rect.width;
             canvas.height = rect.height;
             
-            // Resize off-screen canvas to match
-            tempCanvas.width = rect.width;
-            tempCanvas.height = rect.height;
-            
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.lineWidth = currentSize;
             ctx.strokeStyle = currentColor;
-            
-            // Set up temp canvas
-            tempCtx.lineCap = 'round';
-            tempCtx.lineJoin = 'round';
             
             updateCanvasSize();
         }
@@ -867,6 +951,21 @@
         function startDrawing(e) {
             if (currentTool === 'text') {
                 handleTextClick(e);
+                return;
+            }
+            
+            // Handle move tool - enable panning
+            if (currentTool === 'move') {
+                const rect = canvas.getBoundingClientRect();
+                const screenX = (e.clientX || e.touches[0].clientX) - rect.left;
+                const screenY = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                isPanning = true;
+                panStartX = screenX;
+                panStartY = screenY;
+                lastPanX = viewportX;
+                lastPanY = viewportY;
+                canvas.style.cursor = 'grabbing';
                 return;
             }
             
@@ -888,23 +987,33 @@
                 return;
             }
             
-            // Handle shape tools
-            if (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+            // Handle shape tools (including freehand)
+            if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
                 // Check if clicking on existing shape first
                 const clickedShape = findShapeAt(x, y);
                 if (clickedShape) {
-                    // Only select this shape, clear any previous selection
+                    // Clear text selection when selecting shape
+                    selectedTextBox = null;
+                    // Only select this shape, clear any previous shape selection
                     selectedShape = clickedShape;
-                    // Check if clicking on resize handle
-                    const handle = getResizeHandle(x, y, clickedShape);
-                    if (handle) {
-                        isResizing = true;
-                        resizeHandle = handle;
-                    } else {
-                        // Start dragging the shape
+                    
+                    // For freehand shapes, only allow dragging (no resizing)
+                    if (clickedShape.type === 'freehand') {
                         isDragging = true;
-                        dragOffsetX = x - clickedShape.x;
-                        dragOffsetY = y - clickedShape.y;
+                        clickedShape.lastDragX = x;
+                        clickedShape.lastDragY = y;
+                    } else {
+                        // Check if clicking on resize handle for other shapes
+                        const handle = getResizeHandle(x, y, clickedShape);
+                        if (handle) {
+                            isResizing = true;
+                            resizeHandle = handle;
+                        } else {
+                            // Start dragging the shape
+                            isDragging = true;
+                            dragOffsetX = x - clickedShape.x;
+                            dragOffsetY = y - clickedShape.y;
+                        }
                     }
                     redrawCanvas();
                     return;
@@ -912,9 +1021,16 @@
                 
                 // No shape clicked, clear selection and start drawing new shape
                 selectedShape = null;
-                isDrawingShape = true;
-                startX = x;
-                startY = y;
+                selectedTextBox = null;
+                
+                if (currentTool === 'freehand') {
+                    isDrawingFreehand = true;
+                    freehandPath = [{x: x, y: y}];
+                } else {
+                    isDrawingShape = true;
+                    startX = x;
+                    startY = y;
+                }
                 redrawCanvas();
                 return;
             }
@@ -926,41 +1042,12 @@
                 redrawCanvas();
             }
             
-            if (currentTool === 'pen' || currentTool === 'eraser') {
-                isDrawing = true;
-                lastX = x;
-                lastY = y;
-                
-                // Set up drawing context for pen/eraser
-                if (currentTool === 'eraser') {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.lineWidth = eraserSize;
-                    ctx.globalAlpha = 1;
-                } else {
-                    // For pen with transparency, use off-screen canvas
-                    if (penAlpha < 1) {
-                        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                        tempCtx.globalCompositeOperation = 'source-over';
-                        tempCtx.lineWidth = currentSize;
-                        tempCtx.strokeStyle = currentColor;
-                        tempCtx.globalAlpha = 1; // Draw solid on temp canvas
-                    } else {
-                        ctx.globalCompositeOperation = 'source-over';
-                        ctx.lineWidth = currentSize;
-                        ctx.strokeStyle = currentColor;
-                        ctx.globalAlpha = 1;
-                    }
-                }
-                
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                // Don't save state here for pen/eraser, save only when drawing is complete
-            }
+
         }
 
         function updateCursor(e) {
             // Don't change cursor while drawing/dragging/resizing
-            if (isDrawing || isDragging || isResizing || isDrawingShape || isDraggingText) return;
+            if (isDragging || isResizing || isDrawingShape || isDrawingFreehand || isDraggingText) return;
             
             const rect = canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
@@ -980,39 +1067,46 @@
             }
             
             // Check if we're over a shape manipulation tool
-            if (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+            if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
                 const hoveredShape = findShapeAt(x, y);
                 
                 if (hoveredShape) {
-                    const handle = getResizeHandle(x, y, hoveredShape);
-                    
-                    if (handle === 'nw' || handle === 'se') {
-                        canvas.style.cursor = 'nw-resize';
-                        canvas.title = 'Drag to resize';
-                    } else if (handle === 'ne' || handle === 'sw') {
-                        canvas.style.cursor = 'ne-resize';
-                        canvas.title = 'Drag to resize';
-                    } else {
-                        // Over shape but not on handle - can move
+                    // Freehand shapes can only be moved, not resized
+                    if (hoveredShape.type === 'freehand') {
                         canvas.style.cursor = 'move';
-                        canvas.title = 'Drag to move shape';
+                        canvas.title = 'Drag to move freehand drawing';
+                    } else {
+                        const handle = getResizeHandle(x, y, hoveredShape);
+                        
+                        if (handle === 'nw' || handle === 'se') {
+                            canvas.style.cursor = 'nw-resize';
+                            canvas.title = 'Drag to resize';
+                        } else if (handle === 'ne' || handle === 'sw') {
+                            canvas.style.cursor = 'ne-resize';
+                            canvas.title = 'Drag to resize';
+                        } else {
+                            // Over shape but not on handle - can move
+                            canvas.style.cursor = 'move';
+                            canvas.title = 'Drag to move shape';
+                        }
                     }
                 } else {
                     // Not over any shape - crosshair for drawing
                     canvas.style.cursor = 'crosshair';
-                    canvas.title = 'Click and drag to draw new shape';
+                    if (currentTool === 'freehand') {
+                        canvas.title = 'Click and drag to draw freehand';
+                    } else {
+                        canvas.title = 'Click and drag to draw new shape';
+                    }
                 }
             } else {
                 // Restore default cursor for other tools
-                if (currentTool === 'pen') {
-                    canvas.style.cursor = 'crosshair';
-                    canvas.title = 'Draw with pen';
-                } else if (currentTool === 'eraser') {
-                    canvas.style.cursor = 'grab';
-                    canvas.title = 'Erase content';
-                } else if (currentTool === 'text') {
+                if (currentTool === 'text') {
                     canvas.style.cursor = 'text';
                     canvas.title = 'Click to add text';
+                } else if (currentTool === 'move') {
+                    canvas.style.cursor = 'grab';
+                    canvas.title = 'Drag to pan around canvas';
                 }
             }
         }
@@ -1041,8 +1135,27 @@
             // Handle shape dragging
             if (isDragging && selectedShape) {
                 canvas.style.cursor = 'move';
-                selectedShape.x = currentX - dragOffsetX;
-                selectedShape.y = currentY - dragOffsetY;
+                if (selectedShape.type === 'freehand') {
+                    // For freehand shapes, move all path points
+                    if (selectedShape.path) {
+                        const deltaX = currentX - (selectedShape.lastDragX || currentX);
+                        const deltaY = currentY - (selectedShape.lastDragY || currentY);
+                        
+                        if (selectedShape.lastDragX !== undefined) {
+                            selectedShape.path.forEach(point => {
+                                point.x += deltaX;
+                                point.y += deltaY;
+                            });
+                        }
+                        
+                        selectedShape.lastDragX = currentX;
+                        selectedShape.lastDragY = currentY;
+                    }
+                } else {
+                    // For regular shapes, move x/y position
+                    selectedShape.x = currentX - dragOffsetX;
+                    selectedShape.y = currentY - dragOffsetY;
+                }
                 redrawCanvas();
                 return;
             }
@@ -1070,40 +1183,34 @@
             }
             
             // Handle new shape drawing preview
-            if (isDrawingShape && (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow')) {
+            if (isDrawingShape && (currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow')) {
                 redrawCanvas();
                 drawShapePreview(startX, startY, currentX, currentY);
                 return;
             }
             
-            // Handle regular drawing (pen, eraser)
-            if (currentTool === 'text' || !isDrawing) return;
-            
-            // Choose the right canvas context
-            const drawCtx = (currentTool === 'pen' && penAlpha < 1) ? tempCtx : ctx;
-            
-            // Use world coordinates directly with canvas transformation
-            if (drawCtx === ctx) {
-                resetTransform();
-                applyTransform();
-            } else {
-                // Apply same transform to temp canvas
-                tempCtx.setTransform(zoomLevel, 0, 0, zoomLevel, -viewportX * zoomLevel, -viewportY * zoomLevel);
+            // Handle freehand drawing
+            if (isDrawingFreehand && currentTool === 'freehand') {
+                freehandPath.push({x: currentX, y: currentY});
+                redrawCanvas();
+                // Draw the current freehand path as preview
+                if (freehandPath.length > 1) {
+                    ctx.save();
+                    applyTransform();
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = currentSize;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(freehandPath[0].x, freehandPath[0].y);
+                    for (let i = 1; i < freehandPath.length; i++) {
+                        ctx.lineTo(freehandPath[i].x, freehandPath[i].y);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                return;
             }
-            
-            drawCtx.beginPath();
-            drawCtx.moveTo(lastX, lastY);
-            drawCtx.lineTo(currentX, currentY);
-            drawCtx.stroke();
-            
-            if (drawCtx === ctx) {
-                resetTransform();
-            } else {
-                tempCtx.setTransform(1, 0, 0, 1, 0, 0);
-            }
-            
-            lastX = currentX;
-            lastY = currentY;
         }
 
         function stopDrawing(e) {
@@ -1138,8 +1245,6 @@
                         fontFamily: 'Arial'
                     };
                     shapes.push(shape);
-                    // Don't auto-select the new shape to avoid unwanted behavior
-                    // selectedShape = shape;
                     redrawCanvas();
                 }
                 isDrawingShape = false;
@@ -1147,61 +1252,43 @@
                 return;
             }
             
+            // Handle freehand completion
+            if (isDrawingFreehand && freehandPath.length > 1) {
+                const shape = {
+                    type: 'freehand',
+                    path: [...freehandPath], // Copy the path
+                    color: currentColor,
+                    lineWidth: currentSize,
+                    id: Date.now()
+                };
+                shapes.push(shape);
+                isDrawingFreehand = false;
+                freehandPath = [];
+                redrawCanvas();
+                saveState();
+                return;
+            }
+            
             // Handle shape manipulation end
             if (isDragging || isResizing || isDraggingText) {
+                // Clean up freehand dragging state
+                if (selectedShape && selectedShape.type === 'freehand') {
+                    delete selectedShape.lastDragX;
+                    delete selectedShape.lastDragY;
+                }
+                
                 isDragging = false;
                 isDraggingText = false;
                 isResizing = false;
                 resizeHandle = null;
                 // Reset cursor to default for the current tool
-                if (currentTool === 'rectangle' || currentTool === 'circle' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+                if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
                     canvas.style.cursor = 'crosshair';
                 } else if (currentTool === 'text') {
                     canvas.style.cursor = 'text';
                 }
                 saveState();
                 return;
-            }
-            
-            // Handle regular drawing end
-            if (isDrawing) {
-                isDrawing = false;
-                
-                // If we used temp canvas, composite it to main canvas with transparency
-                if (currentTool === 'pen' && penAlpha < 1) {
-                    ctx.globalAlpha = penAlpha;
-                    ctx.drawImage(tempCanvas, 0, 0);
-                    ctx.globalAlpha = 1;
-                }
-                
-                // For pen/eraser, save state after drawing is complete
-                if (currentTool === 'pen' || currentTool === 'eraser') {
-                    // Save the current canvas state including pen/eraser strokes
-                    resetTransform();
-                    const tempImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    
-                    historyStep++;
-                    if (historyStep < drawingHistory.length) {
-                        drawingHistory.length = historyStep;
-                    }
-                    
-                    drawingHistory[historyStep] = {
-                        imageData: tempImageData,
-                        textBoxes: JSON.parse(JSON.stringify(textBoxes)),
-                        shapes: JSON.parse(JSON.stringify(shapes))
-                    };
-                    
-                    if (drawingHistory.length > 20) {
-                        drawingHistory.shift();
-                        historyStep--;
-                    }
-                }
-                
-                const currentWb = getCurrentWhiteboard();
-                if (currentWb) {
-                    currentWb.modified = true;
-                    renderWhiteboardTabs();
-                }
             }
         }
 
@@ -1230,62 +1317,58 @@
                 finalizeTextInput();
             }
             
-            // Clear selection when switching tools
-            if (selectedShape || selectedTextBox) {
-                selectedShape = null;
-                selectedTextBox = null;
-                redrawCanvas();
+            // Clear selection when switching tools, but preserve shape selection when switching back to shape tool
+            if (tool !== 'shape' && !['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) {
+                if (selectedShape || selectedTextBox) {
+                    selectedShape = null;
+                    selectedTextBox = null;
+                    redrawCanvas();
+                }
             }
             
-            currentTool = tool;
+            // Handle shape tool - use the current shape type
+            if (tool === 'shape') {
+                currentTool = currentShapeType;
+            } else {
+                currentTool = tool;
+            }
+            
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             
-            const toolBtn = document.getElementById(tool + 'Tool');
+            // Set active button (use 'shape' for all shape types)
+            const activeToolName = (tool === 'shape' || ['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) ? 'shape' : tool;
+            const toolBtn = document.getElementById(activeToolName + 'Tool');
             if (toolBtn) {
                 toolBtn.classList.add('active');
             }
             
             // Show/hide appropriate controls
-            showToolControls(tool);
+            showToolControls(tool === 'shape' ? 'shape' : tool);
             
-            if (tool === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.lineWidth = eraserSize;
-            } else if (tool === 'rectangle' || tool === 'circle' || tool === 'line' || tool === 'arrow' || tool === 'double-arrow') {
+            // Set context properties for shapes
+            if (tool === 'shape' || ['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) {
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.lineWidth = currentSize;
                 ctx.strokeStyle = currentColor;
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.lineWidth = currentSize;
-                if (currentTool === 'pen') {
-                    updateColorWithAlpha();
-                } else {
-                    ctx.strokeStyle = currentColor;
-                }
             }
             
             // Set initial cursor for the tool
-            if (tool === 'eraser') {
-                canvas.style.cursor = 'grab';
-            } else if (tool === 'text') {
+            if (tool === 'text') {
                 canvas.style.cursor = 'text';
             } else {
                 canvas.style.cursor = 'crosshair';
             }
             
-            ctx.strokeStyle = currentColor;
-            
-            document.getElementById('currentTool').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+            const displayTool = tool === 'shape' ? currentShapeType : tool;
+            document.getElementById('currentTool').textContent = displayTool.charAt(0).toUpperCase() + displayTool.slice(1);
         }
         
         function showToolControls(tool) {
             // Hide all tool controls first
-            const allControls = ['penControls', 'penSeparator1', 'penSizeControls', 
-                                 'penSeparator2', 'penAlphaControls',
-                                 'eraserControls', 'textControls', 'textSeparator1', 
-                                 'textSizeControls', 'textSeparator2', 'textFormatControls',
-                                 'textSeparator3', 'textColorControls'];
+            const allControls = ['textControls', 'textSeparator1', 'textSizeControls', 
+                                 'textSeparator2', 'textFormatControls', 'textSeparator3', 
+                                 'textColorControls', 'shapeControls', 'shapeSeparator1', 
+                                 'shapeSizeControls', 'shapeSeparator2', 'shapeColorControls'];
             
             allControls.forEach(id => {
                 const element = document.getElementById(id);
@@ -1294,16 +1377,6 @@
             
             // Show relevant controls based on tool
             switch(tool) {
-                case 'pen':
-                    document.getElementById('penControls').style.display = 'flex';
-                    document.getElementById('penSeparator1').style.display = 'flex';
-                    document.getElementById('penSizeControls').style.display = 'flex';
-                    document.getElementById('penSeparator2').style.display = 'flex';
-                    document.getElementById('penAlphaControls').style.display = 'flex';
-                    break;
-                case 'eraser':
-                    document.getElementById('eraserControls').style.display = 'flex';
-                    break;
                 case 'text':
                     document.getElementById('textControls').style.display = 'flex';
                     document.getElementById('textSeparator1').style.display = 'flex';
@@ -1313,18 +1386,22 @@
                     document.getElementById('textSeparator3').style.display = 'flex';
                     document.getElementById('textColorControls').style.display = 'flex';
                     break;
+                case 'shape':
+                    document.getElementById('shapeControls').style.display = 'flex';
+                    document.getElementById('shapeSeparator1').style.display = 'flex';
+                    // Show size controls only for freehand
+                    if (currentShapeType === 'freehand') {
+                        document.getElementById('shapeSizeControls').style.display = 'flex';
+                        document.getElementById('shapeSeparator2').style.display = 'flex';
+                    }
+                    document.getElementById('shapeColorControls').style.display = 'flex';
+                    break;
             }
         }
 
         function setDrawingColor(color) {
             currentColor = color;
-            
-            // Apply alpha if using pen tool
-            if (currentTool === 'pen') {
-                updateColorWithAlpha();
-            } else {
-                ctx.strokeStyle = color;
-            }
+            ctx.strokeStyle = color;
             
             // Update active text input color if text tool is active
             if (currentTool === 'text' && textInput && activeTextBox) {
@@ -1353,32 +1430,7 @@
             // No need to set any button as active since this is a custom color
         }
 
-        function setBrushSize(size) {
-            currentSize = size;
-            document.getElementById('sizeDisplay').textContent = size + 'px';
-            document.getElementById('currentSizeDisplay').textContent = size + 'px';
-            
-            // Update canvas line width if pen is currently active
-            if (currentTool === 'pen') {
-                ctx.lineWidth = currentSize;
-            }
-        }
-        
-        function setPenAlpha(alpha) {
-            penAlpha = parseFloat(alpha);
-            document.getElementById('alphaDisplay').textContent = Math.round(alpha * 100) + '%';
-            
-            // Update current color with new alpha
-            updateColorWithAlpha();
-        }
-        
-        function updateColorWithAlpha() {
-            if (currentTool === 'pen') {
-                // Use solid color, transparency handled by globalAlpha
-                ctx.strokeStyle = currentColor;
-            }
-        }
-        
+
         function setFontSize(size) {
             fontSize = parseInt(size);
             document.getElementById('fontSizeDisplay').textContent = size + 'px';
@@ -1412,14 +1464,31 @@
             }
         }
         
-        function setEraserSize(size) {
-            eraserSize = parseInt(size);
-            document.getElementById('eraserSizeDisplay').textContent = size + 'px';
+
+        function setShapeSize(size) {
+            currentSize = size;
+            document.getElementById('shapeSizeDisplay').textContent = size + 'px';
+            document.getElementById('currentSizeDisplay').textContent = size + 'px';
+        }
+        
+        function setShapeType(shapeType) {
+            currentShapeType = shapeType;
+            currentTool = shapeType;
             
-            // Update canvas line width if eraser is currently active
-            if (currentTool === 'eraser') {
-                ctx.lineWidth = eraserSize;
+            // Update button active states
+            document.querySelectorAll('.shape-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`[data-shape="${shapeType}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
             }
+            
+            // Update status bar
+            document.getElementById('currentTool').textContent = shapeType.charAt(0).toUpperCase() + shapeType.slice(1);
+            
+            // Update context settings
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = currentSize;
+            ctx.strokeStyle = currentColor;
         }
 
         function toggleTextFormat(format) {
@@ -1586,6 +1655,7 @@
             
             // Store the position for later
             activeTextBox = {
+                id: Date.now(),
                 x: x,
                 y: y,
                 text: '',
@@ -1710,11 +1780,15 @@
             document.body.appendChild(textInput);
             
             activeTextBox = {
+                id: textBox.id, // Preserve the original ID
                 x: textBox.x,
                 y: textBox.y,
                 text: textBox.text,
                 color: textBox.color,
-                fontSize: textBox.fontSize
+                fontSize: textBox.fontSize,
+                fontFamily: textBox.fontFamily,
+                bold: textBox.bold,
+                italic: textBox.italic
             };
             
             textInput.focus();
@@ -1889,34 +1963,22 @@
         }
         
         function redrawCanvas() {
-            // Don't redraw if currently drawing with pen/eraser to avoid interrupting strokes
-            if (isDrawing && (currentTool === 'pen' || currentTool === 'eraser')) {
-                return;
-            }
+            // Ensure all objects have IDs
+            ensureObjectIds();
             
             // Clear the entire canvas
             resetTransform();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // First, restore the base drawing layer (pen/eraser strokes only)
-            if (drawingHistory.length > 0 && historyStep >= 0) {
-                const currentState = drawingHistory[historyStep];
-                if (currentState && currentState.imageData) {
-                    // Draw imageData at screen position (no transform needed for imageData)
-                    resetTransform();
-                    ctx.putImageData(currentState.imageData, 0, 0);
-                }
-            }
-            
             // Apply viewport transformation for shapes and text
             applyTransform();
             
-            // Then draw all shapes on top of the base layer
+            // Draw all shapes (including freehand)
             shapes.forEach(shape => {
                 drawShape(shape);
             });
             
-            // Then draw all text boxes
+            // Draw all text boxes
             textBoxes.forEach(textBox => {
                 drawText(textBox);
             });
@@ -1945,25 +2007,10 @@
                 drawingHistory.length = historyStep;
             }
             
-            // Clear canvas and redraw only pen/eraser strokes (not shapes) to capture base layer
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            // If there's previous history, restore the base drawing layer only
-            if (drawingHistory.length > 0 && historyStep > 0) {
-                const prevState = drawingHistory[historyStep - 1];
-                if (prevState && prevState.imageData) {
-                    tempCtx.putImageData(prevState.imageData, 0, 0);
-                }
-            }
-            
-            // Save current state with separated data
+            // Save current state - just the shape and text objects
             drawingHistory[historyStep] = {
-                imageData: tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height),
-                textBoxes: JSON.parse(JSON.stringify(textBoxes)),
-                shapes: JSON.parse(JSON.stringify(shapes))
+                shapes: JSON.parse(JSON.stringify(shapes)),
+                textBoxes: JSON.parse(JSON.stringify(textBoxes))
             };
             
             // Limit history size
@@ -1992,26 +2039,26 @@
             
             isRestoring = true;
             
-            // Clear canvas completely
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Restore canvas content
-            if (state.imageData) {
-                ctx.putImageData(state.imageData, 0, 0);
-            }
-            
             // Restore text boxes from the saved state
             if (state.textBoxes) {
                 textBoxes = JSON.parse(JSON.stringify(state.textBoxes));
+            } else {
+                textBoxes = [];
             }
             
-            // Restore shapes from the saved state
+            // Restore shapes from the saved state (including freehand)
             if (state.shapes) {
                 shapes = JSON.parse(JSON.stringify(state.shapes));
+            } else {
+                shapes = [];
             }
             
             // Clear selection when restoring
             selectedShape = null;
+            selectedTextBox = null;
+            
+            // Redraw everything
+            redrawCanvas();
             
             isRestoring = false;
         }
@@ -2209,7 +2256,21 @@
             for (let i = shapes.length - 1; i >= 0; i--) {
                 const shape = shapes[i];
                 
-                if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
+                if (shape.type === 'freehand') {
+                    // For freehand shapes, check if point is near any part of the path
+                    if (shape.path && shape.path.length > 1) {
+                        for (let j = 0; j < shape.path.length - 1; j++) {
+                            const distance = distanceFromPointToLine(
+                                x, y, 
+                                shape.path[j].x, shape.path[j].y,
+                                shape.path[j + 1].x, shape.path[j + 1].y
+                            );
+                            if (distance < 20) { // 20px tolerance for freehand selection
+                                return shape;
+                            }
+                        }
+                    }
+                } else if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
                     // For lines/arrows, create a bounding box with larger padding for easier selection
                     const minX = Math.min(shape.x, shape.width) - 25;
                     const maxX = Math.max(shape.x, shape.width) + 25;
@@ -2471,13 +2532,50 @@
             ctx.fillStyle = 'transparent';
             
             ctx.beginPath();
-            if (shape.type === 'rectangle') {
+            if (shape.type === 'freehand') {
+                // Draw freehand path
+                if (shape.path && shape.path.length > 1) {
+                    ctx.moveTo(shape.path[0].x, shape.path[0].y);
+                    for (let i = 1; i < shape.path.length; i++) {
+                        ctx.lineTo(shape.path[i].x, shape.path[i].y);
+                    }
+                }
+            } else if (shape.type === 'rectangle') {
                 ctx.rect(shape.x, shape.y, shape.width, shape.height);
-            } else if (shape.type === 'circle') {
+            } else if (shape.type === 'oval') {
                 const centerX = shape.x + shape.width / 2;
                 const centerY = shape.y + shape.height / 2;
-                const radius = Math.min(shape.width, shape.height) / 2;
-                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                const radiusX = shape.width / 2;
+                const radiusY = shape.height / 2;
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+            } else if (shape.type === 'kite') {
+                const centerX = shape.x + shape.width / 2;
+                const centerY = shape.y + shape.height / 2;
+                ctx.moveTo(centerX, shape.y); // Top point
+                ctx.lineTo(shape.x + shape.width, centerY); // Right point
+                ctx.lineTo(centerX, shape.y + shape.height); // Bottom point
+                ctx.lineTo(shape.x, centerY); // Left point
+                ctx.closePath();
+            } else if (shape.type === 'cylinder') {
+                const centerX = shape.x + shape.width / 2;
+                const topY = shape.y;
+                const bottomY = shape.y + shape.height;
+                const radiusX = shape.width / 2;
+                const ellipseHeight = shape.height * 0.1; // 10% of height for ellipse
+                
+                // Draw top ellipse
+                ctx.ellipse(centerX, topY, radiusX, ellipseHeight, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // Draw side lines
+                ctx.beginPath();
+                ctx.moveTo(shape.x, topY);
+                ctx.lineTo(shape.x, bottomY);
+                ctx.moveTo(shape.x + shape.width, topY);
+                ctx.lineTo(shape.x + shape.width, bottomY);
+                
+                // Draw bottom ellipse (visible part)
+                ctx.ellipse(centerX, bottomY, radiusX, ellipseHeight, 0, 0, Math.PI);
             } else if (shape.type === 'line') {
                 ctx.moveTo(shape.x, shape.y);
                 ctx.lineTo(shape.width, shape.height); // width/height store end coordinates
@@ -2490,8 +2588,8 @@
                 ctx.stroke();
             }
             
-            // Draw text if it exists
-            if (shape.text && shape.text.trim() !== '') {
+            // Draw text if it exists (not for freehand)
+            if (shape.text && shape.text.trim() !== '' && shape.type !== 'freehand') {
                 drawShapeText(shape);
             }
             
@@ -2512,11 +2610,38 @@
             ctx.beginPath();
             if (currentTool === 'rectangle') {
                 ctx.rect(x, y, width, height);
-            } else if (currentTool === 'circle') {
+            } else if (currentTool === 'oval') {
                 const centerX = x + width / 2;
                 const centerY = y + height / 2;
-                const radius = Math.min(width, height) / 2;
-                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                const radiusX = width / 2;
+                const radiusY = height / 2;
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+            } else if (currentTool === 'kite') {
+                const centerX = x + width / 2;
+                const centerY = y + height / 2;
+                ctx.moveTo(centerX, y); // Top point
+                ctx.lineTo(x + width, centerY); // Right point
+                ctx.lineTo(centerX, y + height); // Bottom point
+                ctx.lineTo(x, centerY); // Left point
+                ctx.closePath();
+            } else if (currentTool === 'cylinder') {
+                const centerX = x + width / 2;
+                const topY = y;
+                const bottomY = y + height;
+                const radiusX = width / 2;
+                const ellipseHeight = height * 0.1;
+                
+                // Draw top ellipse
+                ctx.ellipse(centerX, topY, radiusX, ellipseHeight, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // Draw side lines and bottom ellipse
+                ctx.beginPath();
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.moveTo(x + width, topY);
+                ctx.lineTo(x + width, bottomY);
+                ctx.ellipse(centerX, bottomY, radiusX, ellipseHeight, 0, 0, Math.PI);
             } else if (currentTool === 'line') {
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
@@ -2570,17 +2695,14 @@
         // Shape text editing functions
         function editShapeText(shape) {
             // Only allow text editing for 2D shapes
-            if (shape.type !== 'rectangle' && shape.type !== 'circle') {
+            if (shape.type !== 'rectangle' && shape.type !== 'oval' && shape.type !== 'kite' && shape.type !== 'cylinder') {
                 return;
             }
             
             // Calculate text position
             let centerX, centerY;
             
-            if (shape.type === 'rectangle') {
-                centerX = shape.x + shape.width / 2;
-                centerY = shape.y + shape.height / 2;
-            } else if (shape.type === 'circle') {
+            if (shape.type === 'rectangle' || shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') {
                 centerX = shape.x + shape.width / 2;
                 centerY = shape.y + shape.height / 2;
             }
@@ -2640,10 +2762,7 @@
 
             let centerX, centerY;
 
-            if (shape.type === 'rectangle') {
-                centerX = shape.x + shape.width / 2;
-                centerY = shape.y + shape.height / 2;
-            } else if (shape.type === 'circle') {
+            if (shape.type === 'rectangle' || shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') {
                 centerX = shape.x + shape.width / 2;
                 centerY = shape.y + shape.height / 2;
             } else {
@@ -2655,7 +2774,7 @@
             // Split text into lines for better display
             const words = shape.text.split('\n'); // Support manual line breaks
             const maxWidth = shape.type === 'rectangle' ? shape.width - 10 : 
-                           shape.type === 'circle' ? Math.min(shape.width, shape.height) * 0.7 : 200;
+                           (shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') ? Math.min(shape.width, shape.height) * 0.7 : 200;
             const lines = [];
             
             words.forEach(line => {
