@@ -592,6 +592,13 @@
     </div>
 
     <script>
+        // Shape type constants for better code readability and maintainability
+        const ONE_D_SHAPES = ['line', 'arrow', 'double-arrow'];
+        const TWO_D_SHAPES = ['rectangle', 'oval', 'kite', 'cylinder'];
+        const FREEHAND_SHAPES = ['freehand'];
+        const GEOMETRIC_SHAPES = [...ONE_D_SHAPES, ...TWO_D_SHAPES]; // Excludes freehand
+        const ALL_SHAPE_TOOLS = [...ONE_D_SHAPES, ...TWO_D_SHAPES, ...FREEHAND_SHAPES];
+        
         // Drawing functionality
         let canvas, ctx;
         let currentTool = 'text'; // Default to text tool
@@ -636,6 +643,11 @@
         let panStartY = 0;
         let lastPanX = 0;
         let lastPanY = 0;
+        
+        // Shape connection system
+        let connectionPoints = []; // Currently visible connection points
+        let isDrawingConnectedLine = false;
+        let connectionSnapDistance = 15; // Snap distance in world coordinates
         
         // File management
         let whiteboards = [{
@@ -870,9 +882,9 @@
                     selectedTextBox = null;
                     redrawCanvas();
                 } else {
-                    // Check if double-clicking on a shape (only 2D shapes support text)
+                    // Check if double-clicking on a shape (2D and 1D shapes support text)
                     const clickedShape = findShapeAt(x, y);
-                    if (clickedShape && (clickedShape.type === 'rectangle' || clickedShape.type === 'oval' || clickedShape.type === 'kite' || clickedShape.type === 'cylinder')) {
+                    if (clickedShape && !FREEHAND_SHAPES.includes(clickedShape.type)) {
                         editShapeText(clickedShape);
                     }
                 }
@@ -988,7 +1000,7 @@
             }
             
             // Handle shape tools (including freehand)
-            if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+            if (ALL_SHAPE_TOOLS.includes(currentTool)) {
                 // Check if clicking on existing shape first
                 const clickedShape = findShapeAt(x, y);
                 if (clickedShape) {
@@ -998,7 +1010,7 @@
                     selectedShape = clickedShape;
                     
                     // For freehand shapes, only allow dragging (no resizing)
-                    if (clickedShape.type === 'freehand') {
+                    if (FREEHAND_SHAPES.includes(clickedShape.type)) {
                         isDragging = true;
                         clickedShape.lastDragX = x;
                         clickedShape.lastDragY = y;
@@ -1023,9 +1035,26 @@
                 selectedShape = null;
                 selectedTextBox = null;
                 
-                if (currentTool === 'freehand') {
+                if (FREEHAND_SHAPES.includes(currentTool)) {
                     isDrawingFreehand = true;
                     freehandPath = [{x: x, y: y}];
+                } else if (ONE_D_SHAPES.includes(currentTool)) {
+                    // Handle connection snapping for lines/arrows
+                    isDrawingShape = true;
+                    isDrawingConnectedLine = true;
+                    
+                    // Check for connection point snapping
+                    const connectionPoint = findNearestConnectionPoint(x, y);
+                    if (connectionPoint) {
+                        startX = connectionPoint.x;
+                        startY = connectionPoint.y;
+                        // Store connection info for when line is completed
+                        window.tempStartConnection = connectionPoint;
+                    } else {
+                        startX = x;
+                        startY = y;
+                        window.tempStartConnection = null;
+                    }
                 } else {
                     isDrawingShape = true;
                     startX = x;
@@ -1056,6 +1085,13 @@
             const x = worldPos.x;
             const y = worldPos.y;
             
+            // Show connection points for line/arrow tools
+            if (ONE_D_SHAPES.includes(currentTool)) {
+                // Force redraw to show/hide connection points
+                redrawCanvas();
+                drawConnectionPoints(x, y);
+            }
+            
             // Check for text boxes when using text tool
             if (currentTool === 'text') {
                 const hoveredText = findTextAt(x, y);
@@ -1067,12 +1103,12 @@
             }
             
             // Check if we're over a shape manipulation tool
-            if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+            if (ALL_SHAPE_TOOLS.includes(currentTool)) {
                 const hoveredShape = findShapeAt(x, y);
                 
                 if (hoveredShape) {
                     // Freehand shapes can only be moved, not resized
-                    if (hoveredShape.type === 'freehand') {
+                    if (FREEHAND_SHAPES.includes(hoveredShape.type)) {
                         canvas.style.cursor = 'move';
                         canvas.title = 'Drag to move freehand drawing';
                     } else {
@@ -1093,7 +1129,7 @@
                 } else {
                     // Not over any shape - crosshair for drawing
                     canvas.style.cursor = 'crosshair';
-                    if (currentTool === 'freehand') {
+                    if (FREEHAND_SHAPES.includes(currentTool)) {
                         canvas.title = 'Click and drag to draw freehand';
                     } else {
                         canvas.title = 'Click and drag to draw new shape';
@@ -1135,7 +1171,7 @@
             // Handle shape dragging
             if (isDragging && selectedShape) {
                 canvas.style.cursor = 'move';
-                if (selectedShape.type === 'freehand') {
+                if (FREEHAND_SHAPES.includes(selectedShape.type)) {
                     // For freehand shapes, move all path points
                     if (selectedShape.path) {
                         const deltaX = currentX - (selectedShape.lastDragX || currentX);
@@ -1155,6 +1191,9 @@
                     // For regular shapes, move x/y position
                     selectedShape.x = currentX - dragOffsetX;
                     selectedShape.y = currentY - dragOffsetY;
+                    
+                    // Update any connected lines
+                    updateConnectedLines(selectedShape);
                 }
                 redrawCanvas();
                 return;
@@ -1183,14 +1222,28 @@
             }
             
             // Handle new shape drawing preview
-            if (isDrawingShape && (currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow')) {
+            if (isDrawingShape && GEOMETRIC_SHAPES.includes(currentTool)) {
                 redrawCanvas();
-                drawShapePreview(startX, startY, currentX, currentY);
+                
+                // Handle connection snapping for lines/arrows during preview
+                let previewEndX = currentX;
+                let previewEndY = currentY;
+                if (isDrawingConnectedLine && ONE_D_SHAPES.includes(currentTool)) {
+                    const connectionPoint = findNearestConnectionPoint(currentX, currentY);
+                    if (connectionPoint) {
+                        previewEndX = connectionPoint.x;
+                        previewEndY = connectionPoint.y;
+                    }
+                    // Also show connection points during line drawing
+                    drawConnectionPoints(currentX, currentY);
+                }
+                
+                drawShapePreview(startX, startY, previewEndX, previewEndY);
                 return;
             }
             
             // Handle freehand drawing
-            if (isDrawingFreehand && currentTool === 'freehand') {
+            if (isDrawingFreehand && FREEHAND_SHAPES.includes(currentTool)) {
                 freehandPath.push({x: currentX, y: currentY});
                 redrawCanvas();
                 // Draw the current freehand path as preview
@@ -1226,16 +1279,27 @@
                 const endScreenX = (e.clientX || e.touches[0].clientX) - rect.left;
                 const endScreenY = (e.clientY || e.touches[0].clientY) - rect.top;
                 const endWorldPos = screenToWorld(endScreenX, endScreenY);
-                const endX = endWorldPos.x;
-                const endY = endWorldPos.y;
+                let endX = endWorldPos.x;
+                let endY = endWorldPos.y;
+                
+                // Handle connection snapping for lines/arrows at end point
+                let tempEndConnection = null;
+                if (isDrawingConnectedLine && ONE_D_SHAPES.includes(currentTool)) {
+                    const connectionPoint = findNearestConnectionPoint(endX, endY);
+                    if (connectionPoint) {
+                        endX = connectionPoint.x;
+                        endY = connectionPoint.y;
+                        tempEndConnection = connectionPoint;
+                    }
+                }
                 
                 if (Math.abs(endX - startX) > 5 || Math.abs(endY - startY) > 5) {
                     const shape = {
                         type: currentTool,
-                        x: currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow' ? startX : Math.min(startX, endX),
-                        y: currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow' ? startY : Math.min(startY, endY),
-                        width: currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow' ? endX : Math.abs(endX - startX),
-                        height: currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow' ? endY : Math.abs(endY - startY),
+                        x: ONE_D_SHAPES.includes(currentTool) ? startX : Math.min(startX, endX),
+                        y: ONE_D_SHAPES.includes(currentTool) ? startY : Math.min(startY, endY),
+                        width: ONE_D_SHAPES.includes(currentTool) ? endX : Math.abs(endX - startX),
+                        height: ONE_D_SHAPES.includes(currentTool) ? endY : Math.abs(endY - startY),
                         color: currentColor,
                         lineWidth: currentSize,
                         angle: 0,
@@ -1244,10 +1308,29 @@
                         fontSize: 16,
                         fontFamily: 'Arial'
                     };
+                    
+                    // Add connection information for lines/arrows
+                    if (isDrawingConnectedLine && ONE_D_SHAPES.includes(currentTool)) {
+                        if (window.tempStartConnection) {
+                            shape.startConnection = {
+                                shapeId: window.tempStartConnection.shapeId,
+                                type: window.tempStartConnection.type
+                            };
+                        }
+                        if (tempEndConnection) {
+                            shape.endConnection = {
+                                shapeId: tempEndConnection.shapeId,
+                                type: tempEndConnection.type
+                            };
+                        }
+                    }
+                    
                     shapes.push(shape);
                     redrawCanvas();
                 }
                 isDrawingShape = false;
+                isDrawingConnectedLine = false;
+                window.tempStartConnection = null;
                 saveState();
                 return;
             }
@@ -1272,7 +1355,7 @@
             // Handle shape manipulation end
             if (isDragging || isResizing || isDraggingText) {
                 // Clean up freehand dragging state
-                if (selectedShape && selectedShape.type === 'freehand') {
+                if (selectedShape && FREEHAND_SHAPES.includes(selectedShape.type)) {
                     delete selectedShape.lastDragX;
                     delete selectedShape.lastDragY;
                 }
@@ -1282,7 +1365,7 @@
                 isResizing = false;
                 resizeHandle = null;
                 // Reset cursor to default for the current tool
-                if (currentTool === 'freehand' || currentTool === 'rectangle' || currentTool === 'oval' || currentTool === 'kite' || currentTool === 'cylinder' || currentTool === 'line' || currentTool === 'arrow' || currentTool === 'double-arrow') {
+                if (ALL_SHAPE_TOOLS.includes(currentTool)) {
                     canvas.style.cursor = 'crosshair';
                 } else if (currentTool === 'text') {
                     canvas.style.cursor = 'text';
@@ -1318,7 +1401,7 @@
             }
             
             // Clear selection when switching tools, but preserve shape selection when switching back to shape tool
-            if (tool !== 'shape' && !['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) {
+            if (tool !== 'shape' && !ALL_SHAPE_TOOLS.includes(tool)) {
                 if (selectedShape || selectedTextBox) {
                     selectedShape = null;
                     selectedTextBox = null;
@@ -1336,7 +1419,7 @@
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             
             // Set active button (use 'shape' for all shape types)
-            const activeToolName = (tool === 'shape' || ['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) ? 'shape' : tool;
+            const activeToolName = (tool === 'shape' || ALL_SHAPE_TOOLS.includes(tool)) ? 'shape' : tool;
             const toolBtn = document.getElementById(activeToolName + 'Tool');
             if (toolBtn) {
                 toolBtn.classList.add('active');
@@ -1346,7 +1429,7 @@
             showToolControls(tool === 'shape' ? 'shape' : tool);
             
             // Set context properties for shapes
-            if (tool === 'shape' || ['freehand', 'rectangle', 'oval', 'kite', 'cylinder', 'line', 'arrow', 'double-arrow'].includes(tool)) {
+            if (tool === 'shape' || ALL_SHAPE_TOOLS.includes(tool)) {
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.lineWidth = currentSize;
                 ctx.strokeStyle = currentColor;
@@ -1390,7 +1473,7 @@
                     document.getElementById('shapeControls').style.display = 'flex';
                     document.getElementById('shapeSeparator1').style.display = 'flex';
                     // Show size controls only for freehand
-                    if (currentShapeType === 'freehand') {
+                    if (FREEHAND_SHAPES.includes(currentShapeType)) {
                         document.getElementById('shapeSizeControls').style.display = 'flex';
                         document.getElementById('shapeSeparator2').style.display = 'flex';
                     }
@@ -2256,7 +2339,7 @@
             for (let i = shapes.length - 1; i >= 0; i--) {
                 const shape = shapes[i];
                 
-                if (shape.type === 'freehand') {
+                if (FREEHAND_SHAPES.includes(shape.type)) {
                     // For freehand shapes, check if point is near any part of the path
                     if (shape.path && shape.path.length > 1) {
                         // Adjust tolerance based on zoom level for consistent selection experience
@@ -2272,7 +2355,7 @@
                             }
                         }
                     }
-                } else if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
+                } else if (ONE_D_SHAPES.includes(shape.type)) {
                     // For lines/arrows, create a bounding box with larger padding for easier selection
                     // Adjust tolerance based on zoom level
                     const tolerance = 25 / zoomLevel;
@@ -2333,12 +2416,156 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
         
+        // Shape Connection System
+        function getShapeConnectionPoints(shape) {
+            if (!shape || FREEHAND_SHAPES.includes(shape.type)) return [];
+            
+            const points = [];
+            
+            if (ONE_D_SHAPES.includes(shape.type)) {
+                // For lines, only provide end points
+                points.push(
+                    { x: shape.x, y: shape.y, type: 'start' },
+                    { x: shape.width, y: shape.height, type: 'end' }
+                );
+            } else {
+                // For rectangles, circles, kites, cylinders
+                const centerX = shape.x + shape.width / 2;
+                const centerY = shape.y + shape.height / 2;
+                
+                points.push(
+                    { x: centerX, y: shape.y, type: 'top' },                    // Top center
+                    { x: shape.x + shape.width, y: centerY, type: 'right' },   // Right center
+                    { x: centerX, y: shape.y + shape.height, type: 'bottom' }, // Bottom center
+                    { x: shape.x, y: centerY, type: 'left' },                  // Left center
+                    { x: centerX, y: centerY, type: 'center' },                // Center
+                    { x: shape.x, y: shape.y, type: 'top-left' },              // Top-left corner
+                    { x: shape.x + shape.width, y: shape.y, type: 'top-right' }, // Top-right corner
+                    { x: shape.x, y: shape.y + shape.height, type: 'bottom-left' }, // Bottom-left corner
+                    { x: shape.x + shape.width, y: shape.y + shape.height, type: 'bottom-right' } // Bottom-right corner
+                );
+            }
+            
+            return points.map(point => ({
+                ...point,
+                shapeId: shape.id
+            }));
+        }
+        
+        function findNearestConnectionPoint(x, y) {
+            const snapDistance = connectionSnapDistance / zoomLevel;
+            let nearest = null;
+            let minDistance = snapDistance;
+            
+            // Check all shapes for connection points
+            shapes.forEach(shape => {
+                if (FREEHAND_SHAPES.includes(shape.type)) return; // Skip freehand shapes
+                
+                const points = getShapeConnectionPoints(shape);
+                points.forEach(point => {
+                    const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearest = point;
+                    }
+                });
+            });
+            
+            return nearest;
+        }
+        
+        function drawConnectionPoints(mouseX, mouseY) {
+            // Only show connection points when using line/arrow tools
+            if (!ONE_D_SHAPES.includes(currentTool)) return;
+            
+            connectionPoints = [];
+            const snapDistance = connectionSnapDistance / zoomLevel;
+            
+            // Find shapes near the mouse and show their connection points
+            shapes.forEach(shape => {
+                if (FREEHAND_SHAPES.includes(shape.type)) return;
+                
+                // Check if mouse is near this shape
+                const shapeBounds = {
+                    left: shape.x - snapDistance,
+                    right: shape.x + shape.width + snapDistance,
+                    top: shape.y - snapDistance,
+                    bottom: shape.y + shape.height + snapDistance
+                };
+                
+                if (mouseX >= shapeBounds.left && mouseX <= shapeBounds.right &&
+                    mouseY >= shapeBounds.top && mouseY <= shapeBounds.bottom) {
+                    
+                    const points = getShapeConnectionPoints(shape);
+                    connectionPoints.push(...points);
+                }
+            });
+            
+            // Draw connection points in screen coordinates
+            ctx.save();
+            resetTransform();
+            
+            connectionPoints.forEach(point => {
+                const screenPos = worldToScreen(point.x, point.y);
+                ctx.fillStyle = '#00ff00';
+                ctx.strokeStyle = '#008800';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            });
+            
+            ctx.restore();
+        }
+        
+        function updateConnectedLines(movedShape) {
+            shapes.forEach(shape => {
+                if (ONE_D_SHAPES.includes(shape.type) && 
+                    (shape.startConnection || shape.endConnection)) {
+                    
+                    let updated = false;
+                    
+                    // Update start connection
+                    if (shape.startConnection && shape.startConnection.shapeId === movedShape.id) {
+                        const connectionPoint = getShapeConnectionPoints(movedShape)
+                            .find(p => p.type === shape.startConnection.type);
+                        if (connectionPoint) {
+                            shape.x = connectionPoint.x;
+                            shape.y = connectionPoint.y;
+                            updated = true;
+                        }
+                    }
+                    
+                    // Update end connection
+                    if (shape.endConnection && shape.endConnection.shapeId === movedShape.id) {
+                        const connectionPoint = getShapeConnectionPoints(movedShape)
+                            .find(p => p.type === shape.endConnection.type);
+                        if (connectionPoint) {
+                            shape.width = connectionPoint.x;  // width stores endX for lines
+                            shape.height = connectionPoint.y; // height stores endY for lines
+                            updated = true;
+                        }
+                    }
+                    
+                    if (updated) {
+                        // Mark the whiteboard as modified
+                        const currentWb = getCurrentWhiteboard();
+                        if (currentWb) {
+                            currentWb.modified = true;
+                            renderWhiteboardTabs();
+                        }
+                    }
+                }
+            });
+        }
+        
         function getResizeHandle(x, y, shape) {
             const handleSize = 8;
             let worldSelectionX, worldSelectionY, worldSelectionWidth, worldSelectionHeight;
             
             // Calculate proper selection bounds in world coordinates
-            if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
+            if (ONE_D_SHAPES.includes(shape.type)) {
                 const startX = shape.x;
                 const startY = shape.y;
                 const endX = shape.width;
@@ -2357,7 +2584,7 @@
                     worldSelectionY -= (40 - worldSelectionHeight) / 2;
                     worldSelectionHeight = 40;
                 }
-            } else if (shape.type === 'freehand') {
+            } else if (FREEHAND_SHAPES.includes(shape.type)) {
                 // For freehand shapes, calculate bounding box from path
                 if (shape.path && shape.path.length > 0) {
                     let minX = shape.path[0].x, maxX = shape.path[0].x;
@@ -2450,6 +2677,9 @@
                     }
                     break;
             }
+            
+            // Update any connected lines after resizing
+            updateConnectedLines(shape);
         }
         
         function drawSelection(shape) {
@@ -2461,7 +2691,7 @@
             // Draw selection border
             let worldSelectionX, worldSelectionY, worldSelectionWidth, worldSelectionHeight;
             
-            if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
+            if (ONE_D_SHAPES.includes(shape.type)) {
                 // For lines, create a bounding box around the actual line
                 const startX = shape.x;
                 const startY = shape.y;
@@ -2482,7 +2712,7 @@
                     worldSelectionY -= (40 - worldSelectionHeight) / 2;
                     worldSelectionHeight = 40;
                 }
-            } else if (shape.type === 'freehand') {
+            } else if (FREEHAND_SHAPES.includes(shape.type)) {
                 // For freehand shapes, calculate bounding box from path
                 if (shape.path && shape.path.length > 0) {
                     let minX = shape.path[0].x, maxX = shape.path[0].x;
@@ -2600,7 +2830,7 @@
             ctx.fillStyle = 'transparent';
             
             ctx.beginPath();
-            if (shape.type === 'freehand') {
+            if (FREEHAND_SHAPES.includes(shape.type)) {
                 // Draw freehand path
                 if (shape.path && shape.path.length > 1) {
                     ctx.moveTo(shape.path[0].x, shape.path[0].y);
@@ -2645,19 +2875,32 @@
                 // Draw bottom ellipse (visible part)
                 ctx.ellipse(centerX, bottomY, radiusX, ellipseHeight, 0, 0, Math.PI);
             } else if (shape.type === 'line') {
-                ctx.moveTo(shape.x, shape.y);
-                ctx.lineTo(shape.width, shape.height); // width/height store end coordinates
+                if (shape.text && shape.text.trim() !== '') {
+                    // Draw line with gap for text
+                    drawLineWithGap(ctx, shape);
+                } else {
+                    ctx.moveTo(shape.x, shape.y);
+                    ctx.lineTo(shape.width, shape.height); // width/height store end coordinates
+                }
             } else if (shape.type === 'arrow') {
-                drawArrow(ctx, shape.x, shape.y, shape.width, shape.height);
+                if (shape.text && shape.text.trim() !== '') {
+                    drawArrowWithGap(ctx, shape);
+                } else {
+                    drawArrow(ctx, shape.x, shape.y, shape.width, shape.height);
+                }
             } else if (shape.type === 'double-arrow') {
-                drawDoubleArrow(ctx, shape.x, shape.y, shape.width, shape.height);
+                if (shape.text && shape.text.trim() !== '') {
+                    drawDoubleArrowWithGap(ctx, shape);
+                } else {
+                    drawDoubleArrow(ctx, shape.x, shape.y, shape.width, shape.height);
+                }
             }
             if (shape.type !== 'arrow' && shape.type !== 'double-arrow') {
                 ctx.stroke();
             }
             
             // Draw text if it exists (not for freehand)
-            if (shape.text && shape.text.trim() !== '' && shape.type !== 'freehand') {
+            if (shape.text && shape.text.trim() !== '' && !FREEHAND_SHAPES.includes(shape.type)) {
                 drawShapeText(shape);
             }
             
@@ -2731,52 +2974,128 @@
 
         // Arrow drawing functions
         function drawArrow(context, startX, startY, endX, endY) {
-            const headLength = 15;
-            const angle = Math.atan2(endY - startY, endX - startX);
             context.beginPath();
             context.moveTo(startX, startY);
             context.lineTo(endX, endY);
             context.stroke();
-            context.beginPath();
-            context.moveTo(endX, endY);
-            context.lineTo(endX - headLength * Math.cos(angle - Math.PI / 6), endY - headLength * Math.sin(angle - Math.PI / 6));
-            context.moveTo(endX, endY);
-            context.lineTo(endX - headLength * Math.cos(angle + Math.PI / 6), endY - headLength * Math.sin(angle + Math.PI / 6));
-            context.stroke();
+            const angle = Math.atan2(endY - startY, endX - startX);
+            drawArrowhead(context, endX, endY, angle);
         }
         
         function drawDoubleArrow(context, startX, startY, endX, endY) {
-            const headLength = 15;
-            const angle = Math.atan2(endY - startY, endX - startX);
             context.beginPath();
             context.moveTo(startX, startY);
             context.lineTo(endX, endY);
             context.stroke();
+            const angle = Math.atan2(endY - startY, endX - startX);
+            drawArrowhead(context, endX, endY, angle);      // End arrowhead
+            drawArrowhead(context, startX, startY, angle, -1); // Start arrowhead
+        }
+
+        // Functions to draw 1D shapes with gaps for text
+        function calculateTextBounds(shape) {
+            ctx.save();
+            ctx.font = `${shape.fontSize || 16}px ${shape.fontFamily || 'Arial'}`;
+            const lines = shape.text.split('\n');
+            let maxWidth = 0;
+            lines.forEach(line => {
+                if (line.trim() !== '') {
+                    const lineWidth = ctx.measureText(line).width;
+                    maxWidth = Math.max(maxWidth, lineWidth);
+                }
+            });
+            const lineHeight = (shape.fontSize || 16) * 1.2;
+            const totalHeight = lines.length * lineHeight;
+            const padding = 8;
+            ctx.restore();
+            return {
+                width: maxWidth + padding * 2,
+                height: totalHeight + padding * 2
+            };
+        }
+
+        function calculateGapPoints(shape) {
+            const textBounds = calculateTextBounds(shape);
+            const centerX = (shape.x + shape.width) / 2;
+            const centerY = (shape.y + shape.height) / 2;
+            
+            // Calculate line direction
+            const dx = shape.width - shape.x;
+            const dy = shape.height - shape.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const unitX = dx / length;
+            const unitY = dy / length;
+            
+            // Calculate gap size along the line
+            const gapSize = Math.max(textBounds.width, textBounds.height) / 2;
+            
+            return {
+                gapStartX: centerX - unitX * gapSize,
+                gapStartY: centerY - unitY * gapSize,
+                gapEndX: centerX + unitX * gapSize,
+                gapEndY: centerY + unitY * gapSize
+            };
+        }
+
+        function drawLineSegmentsWithGap(context, shape) {
+            const gap = calculateGapPoints(shape);
             context.beginPath();
-            context.moveTo(endX, endY);
-            context.lineTo(endX - headLength * Math.cos(angle - Math.PI / 6), endY - headLength * Math.sin(angle - Math.PI / 6));
-            context.moveTo(endX, endY);
-            context.lineTo(endX - headLength * Math.cos(angle + Math.PI / 6), endY - headLength * Math.sin(angle + Math.PI / 6));
-            context.moveTo(startX, startY);
-            context.lineTo(startX + headLength * Math.cos(angle - Math.PI / 6), startY + headLength * Math.sin(angle - Math.PI / 6));
-            context.moveTo(startX, startY);
-            context.lineTo(startX + headLength * Math.cos(angle + Math.PI / 6), startY + headLength * Math.sin(angle + Math.PI / 6));
+            context.moveTo(shape.x, shape.y);
+            context.lineTo(gap.gapStartX, gap.gapStartY);
+            context.moveTo(gap.gapEndX, gap.gapEndY);
+            context.lineTo(shape.width, shape.height);
             context.stroke();
+        }
+
+        function drawArrowhead(context, x, y, angle, direction = 1) {
+            const headLength = 15;
+            context.beginPath();
+            context.moveTo(x, y);
+            context.lineTo(x - direction * headLength * Math.cos(angle - Math.PI / 6), y - direction * headLength * Math.sin(angle - Math.PI / 6));
+            context.moveTo(x, y);
+            context.lineTo(x - direction * headLength * Math.cos(angle + Math.PI / 6), y - direction * headLength * Math.sin(angle + Math.PI / 6));
+            context.stroke();
+        }
+
+        function drawLineWithGap(context, shape) {
+            const gap = calculateGapPoints(shape);
+            context.beginPath();
+            context.moveTo(shape.x, shape.y);
+            context.lineTo(gap.gapStartX, gap.gapStartY);
+            context.moveTo(gap.gapEndX, gap.gapEndY);
+            context.lineTo(shape.width, shape.height);
+        }
+
+        function drawArrowWithGap(context, shape) {
+            drawLineSegmentsWithGap(context, shape);
+            const angle = Math.atan2(shape.height - shape.y, shape.width - shape.x);
+            drawArrowhead(context, shape.width, shape.height, angle);
+        }
+
+        function drawDoubleArrowWithGap(context, shape) {
+            drawLineSegmentsWithGap(context, shape);
+            const angle = Math.atan2(shape.height - shape.y, shape.width - shape.x);
+            drawArrowhead(context, shape.width, shape.height, angle);      // End arrowhead
+            drawArrowhead(context, shape.x, shape.y, angle, -1);           // Start arrowhead
         }
 
         // Shape text editing functions
         function editShapeText(shape) {
-            // Only allow text editing for 2D shapes
-            if (shape.type !== 'rectangle' && shape.type !== 'oval' && shape.type !== 'kite' && shape.type !== 'cylinder') {
+            // Skip text editing for freehand shapes only
+            if (FREEHAND_SHAPES.includes(shape.type)) {
                 return;
             }
             
             // Calculate text position
             let centerX, centerY;
             
-            if (shape.type === 'rectangle' || shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') {
+            if (TWO_D_SHAPES.includes(shape.type)) {
                 centerX = shape.x + shape.width / 2;
                 centerY = shape.y + shape.height / 2;
+            } else if (ONE_D_SHAPES.includes(shape.type)) {
+                // For 1D shapes, use midpoint between start and end
+                centerX = (shape.x + shape.width) / 2;
+                centerY = (shape.y + shape.height) / 2;
             }
             
             // Convert to screen coordinates
@@ -2834,19 +3153,22 @@
 
             let centerX, centerY;
 
-            if (shape.type === 'rectangle' || shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') {
+            if (TWO_D_SHAPES.includes(shape.type)) {
                 centerX = shape.x + shape.width / 2;
                 centerY = shape.y + shape.height / 2;
+            } else if (ONE_D_SHAPES.includes(shape.type)) {
+                // For 1D shapes, use midpoint between start and end
+                centerX = (shape.x + shape.width) / 2;
+                centerY = (shape.y + shape.height) / 2;
             } else {
-                // Skip text rendering for 1D shapes
+                // Skip text rendering for freehand shapes
                 ctx.restore();
                 return;
             }
 
             // Split text into lines for better display
             const words = shape.text.split('\n'); // Support manual line breaks
-            const maxWidth = shape.type === 'rectangle' ? shape.width - 10 : 
-                           (shape.type === 'oval' || shape.type === 'kite' || shape.type === 'cylinder') ? Math.min(shape.width, shape.height) * 0.7 : 200;
+            const maxWidth = TWO_D_SHAPES.includes(shape.type) ? shape.width - 10 : 200;
             const lines = [];
             
             words.forEach(line => {
