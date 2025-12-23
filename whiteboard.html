@@ -2259,36 +2259,42 @@
                 if (shape.type === 'freehand') {
                     // For freehand shapes, check if point is near any part of the path
                     if (shape.path && shape.path.length > 1) {
+                        // Adjust tolerance based on zoom level for consistent selection experience
+                        const tolerance = 20 / zoomLevel;
                         for (let j = 0; j < shape.path.length - 1; j++) {
                             const distance = distanceFromPointToLine(
                                 x, y, 
                                 shape.path[j].x, shape.path[j].y,
                                 shape.path[j + 1].x, shape.path[j + 1].y
                             );
-                            if (distance < 20) { // 20px tolerance for freehand selection
+                            if (distance < tolerance) {
                                 return shape;
                             }
                         }
                     }
                 } else if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
                     // For lines/arrows, create a bounding box with larger padding for easier selection
-                    const minX = Math.min(shape.x, shape.width) - 25;
-                    const maxX = Math.max(shape.x, shape.width) + 25;
-                    const minY = Math.min(shape.y, shape.height) - 25;
-                    const maxY = Math.max(shape.y, shape.height) + 25;
+                    // Adjust tolerance based on zoom level
+                    const tolerance = 25 / zoomLevel;
+                    const minX = Math.min(shape.x, shape.width) - tolerance;
+                    const maxX = Math.max(shape.x, shape.width) + tolerance;
+                    const minY = Math.min(shape.y, shape.height) - tolerance;
+                    const maxY = Math.max(shape.y, shape.height) + tolerance;
                     
                     // First check if point is in expanded bounding box
                     if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
                         // Then check distance to actual line with more generous tolerance
                         const distance = distanceFromPointToLine(x, y, shape.x, shape.y, shape.width, shape.height);
-                        if (distance < 25) { // 25px tolerance for easier selection
+                        if (distance < tolerance) {
                             return shape;
                         }
                     }
                 } else {
                     // For rectangles and circles, use bounding box with small padding
-                    if (x >= shape.x - 5 && x <= shape.x + shape.width + 5 &&
-                        y >= shape.y - 5 && y <= shape.y + shape.height + 5) {
+                    // Adjust tolerance based on zoom level
+                    const tolerance = 5 / zoomLevel;
+                    if (x >= shape.x - tolerance && x <= shape.x + shape.width + tolerance &&
+                        y >= shape.y - tolerance && y <= shape.y + shape.height + tolerance) {
                         return shape;
                     }
                 }
@@ -2329,45 +2335,74 @@
         
         function getResizeHandle(x, y, shape) {
             const handleSize = 8;
-            let selectionX, selectionY, selectionWidth, selectionHeight;
+            let worldSelectionX, worldSelectionY, worldSelectionWidth, worldSelectionHeight;
             
-            // Calculate proper selection bounds
+            // Calculate proper selection bounds in world coordinates
             if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
                 const startX = shape.x;
                 const startY = shape.y;
                 const endX = shape.width;
                 const endY = shape.height;
                 
-                selectionX = Math.min(startX, endX) - 10;
-                selectionY = Math.min(startY, endY) - 10;
-                selectionWidth = Math.abs(endX - startX) + 20;
-                selectionHeight = Math.abs(endY - startY) + 20;
+                worldSelectionX = Math.min(startX, endX) - 10;
+                worldSelectionY = Math.min(startY, endY) - 10;
+                worldSelectionWidth = Math.abs(endX - startX) + 20;
+                worldSelectionHeight = Math.abs(endY - startY) + 20;
                 
-                if (selectionWidth < 40) {
-                    selectionX -= (40 - selectionWidth) / 2;
-                    selectionWidth = 40;
+                if (worldSelectionWidth < 40) {
+                    worldSelectionX -= (40 - worldSelectionWidth) / 2;
+                    worldSelectionWidth = 40;
                 }
-                if (selectionHeight < 40) {
-                    selectionY -= (40 - selectionHeight) / 2;
-                    selectionHeight = 40;
+                if (worldSelectionHeight < 40) {
+                    worldSelectionY -= (40 - worldSelectionHeight) / 2;
+                    worldSelectionHeight = 40;
                 }
+            } else if (shape.type === 'freehand') {
+                // For freehand shapes, calculate bounding box from path
+                if (shape.path && shape.path.length > 0) {
+                    let minX = shape.path[0].x, maxX = shape.path[0].x;
+                    let minY = shape.path[0].y, maxY = shape.path[0].y;
+                    
+                    shape.path.forEach(point => {
+                        minX = Math.min(minX, point.x);
+                        maxX = Math.max(maxX, point.x);
+                        minY = Math.min(minY, point.y);
+                        maxY = Math.max(maxY, point.y);
+                    });
+                    
+                    worldSelectionX = minX - 10;
+                    worldSelectionY = minY - 10;
+                    worldSelectionWidth = (maxX - minX) + 20;
+                    worldSelectionHeight = (maxY - minY) + 20;
+                } else {
+                    // Fallback for empty path
+                    worldSelectionX = shape.x - 10;
+                    worldSelectionY = shape.y - 10;
+                    worldSelectionWidth = 20;
+                    worldSelectionHeight = 20;
+                }
+                // Freehand shapes don't have resize handles, return null
+                return null;
             } else {
-                selectionX = shape.x - 3;
-                selectionY = shape.y - 3;
-                selectionWidth = shape.width + 6;
-                selectionHeight = shape.height + 6;
+                worldSelectionX = shape.x - 3;
+                worldSelectionY = shape.y - 3;
+                worldSelectionWidth = shape.width + 6;
+                worldSelectionHeight = shape.height + 6;
             }
             
+            // Calculate handle size in world coordinates (adjusted for zoom)
+            const worldHandleSize = handleSize / zoomLevel;
+            
             const handles = [
-                { name: 'nw', x: selectionX, y: selectionY },
-                { name: 'ne', x: selectionX + selectionWidth, y: selectionY },
-                { name: 'sw', x: selectionX, y: selectionY + selectionHeight },
-                { name: 'se', x: selectionX + selectionWidth, y: selectionY + selectionHeight }
+                { name: 'nw', x: worldSelectionX, y: worldSelectionY },
+                { name: 'ne', x: worldSelectionX + worldSelectionWidth, y: worldSelectionY },
+                { name: 'sw', x: worldSelectionX, y: worldSelectionY + worldSelectionHeight },
+                { name: 'se', x: worldSelectionX + worldSelectionWidth, y: worldSelectionY + worldSelectionHeight }
             ];
             
             for (let handle of handles) {
-                if (x >= handle.x - handleSize/2 && x <= handle.x + handleSize/2 &&
-                    y >= handle.y - handleSize/2 && y <= handle.y + handleSize/2) {
+                if (x >= handle.x - worldHandleSize/2 && x <= handle.x + worldHandleSize/2 &&
+                    y >= handle.y - worldHandleSize/2 && y <= handle.y + worldHandleSize/2) {
                     return handle.name;
                 }
             }
@@ -2424,7 +2459,7 @@
             ctx.setLineDash([5, 5]);
             
             // Draw selection border
-            let selectionX, selectionY, selectionWidth, selectionHeight;
+            let worldSelectionX, worldSelectionY, worldSelectionWidth, worldSelectionHeight;
             
             if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'double-arrow') {
                 // For lines, create a bounding box around the actual line
@@ -2433,44 +2468,77 @@
                 const endX = shape.width;  // width stores end X for lines
                 const endY = shape.height; // height stores end Y for lines
                 
-                selectionX = Math.min(startX, endX) - 10;
-                selectionY = Math.min(startY, endY) - 10;
-                selectionWidth = Math.abs(endX - startX) + 20;
-                selectionHeight = Math.abs(endY - startY) + 20;
+                worldSelectionX = Math.min(startX, endX) - 10;
+                worldSelectionY = Math.min(startY, endY) - 10;
+                worldSelectionWidth = Math.abs(endX - startX) + 20;
+                worldSelectionHeight = Math.abs(endY - startY) + 20;
                 
                 // Ensure minimum size for very short lines
-                if (selectionWidth < 40) {
-                    selectionX -= (40 - selectionWidth) / 2;
-                    selectionWidth = 40;
+                if (worldSelectionWidth < 40) {
+                    worldSelectionX -= (40 - worldSelectionWidth) / 2;
+                    worldSelectionWidth = 40;
                 }
-                if (selectionHeight < 40) {
-                    selectionY -= (40 - selectionHeight) / 2;
-                    selectionHeight = 40;
+                if (worldSelectionHeight < 40) {
+                    worldSelectionY -= (40 - worldSelectionHeight) / 2;
+                    worldSelectionHeight = 40;
+                }
+            } else if (shape.type === 'freehand') {
+                // For freehand shapes, calculate bounding box from path
+                if (shape.path && shape.path.length > 0) {
+                    let minX = shape.path[0].x, maxX = shape.path[0].x;
+                    let minY = shape.path[0].y, maxY = shape.path[0].y;
+                    
+                    shape.path.forEach(point => {
+                        minX = Math.min(minX, point.x);
+                        maxX = Math.max(maxX, point.x);
+                        minY = Math.min(minY, point.y);
+                        maxY = Math.max(maxY, point.y);
+                    });
+                    
+                    worldSelectionX = minX - 10;
+                    worldSelectionY = minY - 10;
+                    worldSelectionWidth = (maxX - minX) + 20;
+                    worldSelectionHeight = (maxY - minY) + 20;
+                } else {
+                    // Fallback for empty path
+                    worldSelectionX = shape.x - 10;
+                    worldSelectionY = shape.y - 10;
+                    worldSelectionWidth = 20;
+                    worldSelectionHeight = 20;
                 }
             } else {
                 // For rectangles and circles, use normal bounds
-                selectionX = shape.x - 3;
-                selectionY = shape.y - 3;
-                selectionWidth = shape.width + 6;
-                selectionHeight = shape.height + 6;
+                worldSelectionX = shape.x - 3;
+                worldSelectionY = shape.y - 3;
+                worldSelectionWidth = shape.width + 6;
+                worldSelectionHeight = shape.height + 6;
             }
             
-            ctx.strokeRect(selectionX, selectionY, selectionWidth, selectionHeight);
+            // Convert world coordinates to screen coordinates for selection display
+            const topLeft = worldToScreen(worldSelectionX, worldSelectionY);
+            const bottomRight = worldToScreen(worldSelectionX + worldSelectionWidth, worldSelectionY + worldSelectionHeight);
+            
+            const screenSelectionX = topLeft.x;
+            const screenSelectionY = topLeft.y;
+            const screenSelectionWidth = bottomRight.x - topLeft.x;
+            const screenSelectionHeight = bottomRight.y - topLeft.y;
+            
+            ctx.strokeRect(screenSelectionX, screenSelectionY, screenSelectionWidth, screenSelectionHeight);
             
             ctx.setLineDash([]);
             ctx.fillStyle = '#007acc';
             const handleSize = 8;
             
-            // Draw resize handles
+            // Draw resize handles in screen coordinates
             const handles = [
-                { x: selectionX, y: selectionY }, // top-left
-                { x: selectionX + selectionWidth/2, y: selectionY }, // top-center
-                { x: selectionX + selectionWidth, y: selectionY }, // top-right
-                { x: selectionX + selectionWidth, y: selectionY + selectionHeight/2 }, // middle-right
-                { x: selectionX + selectionWidth, y: selectionY + selectionHeight }, // bottom-right
-                { x: selectionX + selectionWidth/2, y: selectionY + selectionHeight }, // bottom-center
-                { x: selectionX, y: selectionY + selectionHeight }, // bottom-left
-                { x: selectionX, y: selectionY + selectionHeight/2 } // middle-left
+                { x: screenSelectionX, y: screenSelectionY }, // top-left
+                { x: screenSelectionX + screenSelectionWidth/2, y: screenSelectionY }, // top-center
+                { x: screenSelectionX + screenSelectionWidth, y: screenSelectionY }, // top-right
+                { x: screenSelectionX + screenSelectionWidth, y: screenSelectionY + screenSelectionHeight/2 }, // middle-right
+                { x: screenSelectionX + screenSelectionWidth, y: screenSelectionY + screenSelectionHeight }, // bottom-right
+                { x: screenSelectionX + screenSelectionWidth/2, y: screenSelectionY + screenSelectionHeight }, // bottom-center
+                { x: screenSelectionX, y: screenSelectionY + screenSelectionHeight }, // bottom-left
+                { x: screenSelectionX, y: screenSelectionY + screenSelectionHeight/2 } // middle-left
             ];
             
             handles.forEach(handle => {
@@ -2598,6 +2666,10 @@
 
         function drawShapePreview(startX, startY, endX, endY) {
             ctx.save();
+            
+            // Apply world coordinate transformation for preview
+            applyTransform();
+            
             ctx.strokeStyle = currentColor;
             ctx.lineWidth = currentSize;
             ctx.setLineDash([5, 5]);
