@@ -1532,10 +1532,32 @@ text</textarea>
                 currentFile.redoStack = []; // Clear redo stack when new change is made
             }
         }
+
+        // When typing is debounced, we keep a pending snapshot so Ctrl+Z works immediately.
+        let pendingUndoTimer = null;
+        let pendingUndoContent = null;
+        let pendingUndoFileId = null;
+
+        function flushPendingUndoSnapshot() {
+            const currentFile = getCurrentFile();
+            if (!currentFile) return;
+            if (pendingUndoTimer) {
+                clearTimeout(pendingUndoTimer);
+                pendingUndoTimer = null;
+            }
+            if (pendingUndoFileId === currentFile.id && pendingUndoContent !== null && pendingUndoContent !== currentFile.content) {
+                pushToUndoStack(pendingUndoContent);
+            }
+            pendingUndoContent = null;
+            pendingUndoFileId = null;
+        }
         
         function undo() {
             const currentFile = getCurrentFile();
             if (!currentFile || currentFile.undoStack.length === 0) return;
+
+            // Ensure we capture the last typing burst before undoing.
+            flushPendingUndoSnapshot();
             
             const editor = document.getElementById('editorContent');
             const currentContent = editor.value;
@@ -2215,7 +2237,7 @@ text</textarea>
                     timestamp: new Date().toISOString()
                 };
                 localStorage.setItem('autoSave', JSON.stringify(saveData));
-            }, 10000); // Auto-save every 10 seconds
+            }, 5000); // Auto-save every 5 seconds
             document.getElementById('autoSaveStatus').textContent = 'On';
         }
 
@@ -2354,22 +2376,32 @@ text</textarea>
         }
 
         // Event Listeners and Initialization
-        let typingTimer;
-        const typingDelay = 1000; // 1 second delay
+        const typingDelay = 400; // debounce typing into one undo step
         
         document.getElementById('editorContent').addEventListener('input', (e) => {
             const currentFile = getCurrentFile();
             if (currentFile) {
-                // Clear previous timer
-                clearTimeout(typingTimer);
-                
-                // Push to undo stack after user stops typing
-                typingTimer = setTimeout(() => {
-                    if (currentFile.content !== e.target.value) {
-                        pushToUndoStack(currentFile.content);
-                        currentFile.content = e.target.value;
+                const newValue = e.target.value;
+                const oldValue = currentFile.content;
+
+                // Track file content immediately.
+                if (oldValue !== newValue) {
+                    currentFile.content = newValue;
+
+                    // Record the pre-edit snapshot once per typing burst.
+                    if (pendingUndoContent === null || pendingUndoFileId !== currentFile.id) {
+                        pendingUndoContent = oldValue;
+                        pendingUndoFileId = currentFile.id;
                     }
-                }, typingDelay);
+
+                    if (pendingUndoTimer) {
+                        clearTimeout(pendingUndoTimer);
+                    }
+                    pendingUndoTimer = setTimeout(() => {
+                        // Commit snapshot after user pauses typing.
+                        flushPendingUndoSnapshot();
+                    }, typingDelay);
+                }
             }
             
             markCurrentFileAsModified();
@@ -3258,19 +3290,6 @@ text</textarea>
             if (currentFile) {
                 document.getElementById('editorContent').value = currentFile.content;
             }
-            
-            // Add input listener for editor content
-            document.getElementById('editorContent').addEventListener('input', function() {
-                const currentFile = getCurrentFile();
-                if (currentFile) {
-                    currentFile.content = this.value;
-                    markCurrentFileAsModified();
-                    updateStatus();
-                }
-            });
-            
-            // Click outside to hide context menus
-            document.addEventListener('click', hideContextMenus);
         });
 
         // Find/Replace Dialog Functions
