@@ -336,56 +336,11 @@
         .compare-main-container {
             display: flex;
             flex-direction: column;
+            height: calc(100vh - 300px);
+            min-height: 600px;
         }
 
-        .compare-input-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
 
-        .compare-input-side {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .diff-result {
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            max-height: 200px;
-            overflow-y: auto;
-            min-height: 50px;
-        }
-
-        .compare-input-side label {
-            font-weight: 600;
-            color: var(--accent-color);
-        }
-
-        .compare-input-side textarea {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 13px;
-            padding: 12px;
-            resize: vertical;
-            outline: none;
-            line-height: 1.5;
-            min-height: 120px;
-        }
-
-        .compare-input-side textarea:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px rgba(97, 218, 251, 0.2);
-        }
 
         /* Diff Legend */
         .diff-legend {
@@ -443,12 +398,14 @@
             border-radius: 6px;
             overflow: hidden;
             flex: 1; /* Takes remaining 60% height */
+            min-height: 0;
         }
 
         .diff-side {
             background-color: var(--bg-primary);
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
 
         .diff-header {
@@ -463,9 +420,72 @@
         .diff-content {
             flex: 1;
             overflow-y: auto;
+            overflow-x: auto;
+            min-height: 150px;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 13px;
             line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        /* Compare Input (with line-number gutter) */
+        .compare-input-wrapper {
+            display: flex;
+            width: 100%;
+            flex: 1 1 150px;
+            min-height: 150px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .compare-input-gutter {
+            width: 50px;
+            padding: 10px 8px;
+            margin: 0;
+            text-align: right;
+            color: var(--text-secondary);
+            background-color: rgba(var(--bg-tertiary-rgb), 0.5);
+            border-right: 1px solid var(--border-color);
+            font-size: 11px;
+            line-height: 1.4;
+            user-select: none;
+            flex-shrink: 0;
+
+            overflow-y: scroll;
+            overflow-x: hidden;
+            scrollbar-width: none;
+        }
+
+        .compare-input-gutter::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        .compare-input-textarea {
+            flex: 1;
+            min-height: 0;
+            padding: 10px;
+            border: none;
+            outline: none;
+            resize: none;
+
+            overflow: auto;
+
+            background: transparent;
+            color: var(--text-primary);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         /* Diff Lines */
@@ -494,6 +514,11 @@
             border-left: 3px solid #dbbc37;
         }
 
+        .diff-line.current-diff {
+            outline: 1px solid var(--accent-color);
+            outline-offset: -1px;
+        }
+
         .line-number {
             display: inline-block;
             width: 50px;
@@ -510,8 +535,9 @@
         .line-content {
             padding: 2px 12px;
             flex: 1;
-            white-space: pre;
-            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
             min-height: 16px;
         }
 
@@ -558,6 +584,57 @@
         .stat-modified {
             color: #dbbc37;
             font-weight: 600;
+        }
+
+        /* Content Type Indicators */
+        .content-type-json {
+            color: #61dafb;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .content-type-xml {
+            color: #ffa500;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .content-type-text {
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Semantic Summary */
+        .semantic-summary {
+            background-color: rgba(97, 218, 251, 0.1);
+            border: 1px solid rgba(97, 218, 251, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .semantic-summary h4 {
+            color: var(--accent-color);
+            font-size: 13px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .semantic-summary ul {
+            margin-left: 16px;
+            margin-bottom: 0;
+        }
+
+        .semantic-summary li {
+            color: var(--text-primary);
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         }
 
         /* File Tabs */
@@ -945,6 +1022,11 @@
                 width: 40px;
                 padding: 2px 4px;
             }
+
+            .compare-input-gutter {
+                width: 40px;
+                padding: 10px 4px;
+            }
         }
     </style>
 </head>
@@ -1120,23 +1202,46 @@
                 <!-- Statistics -->
                 <div class="compare-stats" id="compareStats" style="margin-bottom: 20px;"></div>
                 
-                <!-- Input and Diff Sections with equal height -->
+                <!-- Unified Left/Right Comparison Panels -->
                 <div class="compare-main-container">
-                    <!-- Input Section with inline diff results -->
-                    <div class="compare-input-container">
-                        <div class="compare-input-side">
-                            <label>Left Text:</label>
-                            <textarea id="compareLeft" placeholder="Enter first text..." onchange="updateDiff()" oninput="updateDiff()">test
+                    <div class="diff-container">
+                        <div class="diff-side">
+                            <div class="diff-header">
+                                Left Text
+                                <div style="float: right;">
+                                    <button onclick="editLeftText()" style="padding: 2px 6px; font-size: 11px; margin-right: 4px;">Edit</button>
+                                    <button onclick="clearLeftText()" style="padding: 2px 6px; font-size: 11px;">Clear</button>
+                                </div>
+                            </div>
+                            <div class="compare-input-wrapper" id="compareLeftWrapper">
+                                <pre class="compare-input-gutter" id="compareLeftGutter"></pre>
+                                <textarea id="compareLeft" class="compare-input-textarea" placeholder="Enter or paste first text/JSON/XML...">test
 text</textarea>
-                            <div class="diff-result" id="diffLeft"></div>
+                            </div>
+                            <div class="diff-content" id="diffLeft"></div>
                         </div>
                         
-                        <div class="compare-input-side">
-                            <label>Right Text:</label>
-                            <textarea id="compareRight" placeholder="Enter second text..." onchange="updateDiff()" oninput="updateDiff()">text
+                        <div class="diff-side">
+                            <div class="diff-header">
+                                Right Text
+                                <div style="float: right;">
+                                    <button onclick="editRightText()" style="padding: 2px 6px; font-size: 11px; margin-right: 4px;">Edit</button>
+                                    <button onclick="clearRightText()" style="padding: 2px 6px; font-size: 11px;">Clear</button>
+                                </div>
+                            </div>
+                            <div class="compare-input-wrapper" id="compareRightWrapper">
+                                <pre class="compare-input-gutter" id="compareRightGutter"></pre>
+                                <textarea id="compareRight" class="compare-input-textarea" placeholder="Enter or paste second text/JSON/XML...">text
 text</textarea>
-                            <div class="diff-result" id="diffRight"></div>
+                            </div>
+                            <div class="diff-content" id="diffRight"></div>
                         </div>
+                    </div>
+                    
+                    <!-- Compare Controls -->
+                    <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-top: 1px solid var(--border-color);">
+                        <button onclick="performComparison()" style="padding: 10px 20px; font-size: 14px; font-weight: bold; background: var(--accent-color); color: var(--bg-primary); border: none; border-radius: 6px; cursor: pointer;">Compare</button>
+                        <button id="nextDiffBtn" onclick="goToNextDifference()" disabled style="padding: 10px 20px; font-size: 14px; font-weight: bold; margin-left: 10px;">Next Difference</button>
                     </div>
                 </div>
             </div>
@@ -1775,6 +1880,8 @@ text</textarea>
             hideAllPanels();
             document.getElementById('main-editor').style.display = 'none';
             document.getElementById('compare-panel').style.display = 'flex';
+            document.getElementById('compare-panel').dataset.compareMode = 'input';
+            showInputMode();
         }
         
         function setCurrentAsFirstCompare() {
@@ -1802,7 +1909,7 @@ text</textarea>
             
             document.getElementById('compareLeft').value = firstFile.content;
             document.getElementById('compareRight').value = currentFile.content;
-            updateDiff();
+            initCompareInputLineNumbers();
             showComparePanel();
         }
         
@@ -1831,41 +1938,6 @@ text</textarea>
                 
                 container.appendChild(tab);
             });
-        }
-
-        // Panel Management Functions
-        function hideAllPanels() {
-            document.querySelectorAll('.tool-panel').forEach(panel => {
-                panel.style.display = 'none';
-            });
-            document.getElementById('main-editor').style.display = 'flex';
-        }
-        
-        function showPluginPanel() {
-            hideAllPanels();
-            document.getElementById('main-editor').style.display = 'none';
-            document.getElementById('plugins-panel').style.display = 'flex';
-        }
-        
-        function showFormatPanel() {
-            hideAllPanels();
-            document.getElementById('main-editor').style.display = 'none';
-            document.getElementById('format-panel').style.display = 'flex';
-        }
-        
-        function showComparePanel() {
-            hideAllPanels();
-            document.getElementById('main-editor').style.display = 'none';
-            document.getElementById('compare-panel').style.display = 'flex';
-        }
-        
-        function setCurrentAsFirstCompare() {
-            const currentFile = getCurrentFile();
-            if (currentFile) {
-                compareFirstFileId = currentFile.id;
-                renderFileTabs();
-                alert(`"${currentFile.name}" set as first file to compare`);
-            }
         }
 
         // Tab switching (keep for backward compatibility)
@@ -2015,7 +2087,6 @@ text</textarea>
             document.getElementById('compareRight').value = secondFile.content;
             hideContextMenus();
             showComparePanel();
-            updateDiff();
         }
 
         function clearCompareSelection() {
@@ -2644,27 +2715,84 @@ text</textarea>
         }
 
         function formatXML(xml) {
-            const PADDING = '  '; // 2 spaces for indentation
-            const reg = /(>)(<)(\/*)/g;
-            let pad = 0;
-
-            xml = xml.replace(reg, '$1\r\n$2$3');
-
-            return xml.split('\r\n').map((node) => {
-                let indent = 0;
-                if (node.match(/.+<\/\w[^>]*>$/)) {
-                    indent = 0;
-                } else if (node.match(/^<\/\w/) && pad > 0) {
-                    pad -= 1;
-                } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
-                    indent = 1;
-                } else {
-                    indent = 0;
+            try {
+                // Parse and normalize the XML using DOM
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml.trim(), 'text/xml');
+                
+                // Check for parsing errors
+                if (doc.querySelector('parsererror')) {
+                    // If parsing fails, fall back to basic formatting
+                    return basicXmlFormat(xml);
                 }
-
-                pad += indent;
-                return PADDING.repeat(pad - indent) + node;
-            }).join('\r\n');
+                
+                // Serialize back with consistent formatting
+                const serializer = new XMLSerializer();
+                let normalized = serializer.serializeToString(doc);
+                
+                // Apply consistent indentation
+                return formatXmlString(normalized);
+                
+            } catch (e) {
+                // If anything fails, use basic formatting
+                return basicXmlFormat(xml);
+            }
+        }
+        
+        function formatXmlString(xml) {
+            const INDENT = '  '; // 2 spaces
+            let formatted = '';
+            let indent = 0;
+            
+            // Split by tags
+            const tokens = xml.replace(/></g, '>\n<').split('\n');
+            
+            for (let token of tokens) {
+                token = token.trim();
+                if (!token) continue;
+                
+                // Closing tag - decrease indent first
+                if (token.match(/^<\/\w/)) {
+                    indent = Math.max(0, indent - 1);
+                }
+                
+                // Add indentation and token
+                formatted += INDENT.repeat(indent) + token + '\n';
+                
+                // Opening tag - increase indent after adding
+                if (token.match(/^<\w[^>]*[^\/]>/) && !token.match(/^<\w[^>]*<\/\w[^>]*>$/)) {
+                    indent += 1;
+                }
+            }
+            
+            return formatted.trim();
+        }
+        
+        function basicXmlFormat(xml) {
+            const INDENT = '  ';
+            let formatted = '';
+            let indent = 0;
+            
+            // Basic regex-based formatting as fallback
+            xml = xml.replace(/></g, '>\n<');
+            const lines = xml.split('\n');
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                if (line.match(/^<\/\w/)) {
+                    indent = Math.max(0, indent - 1);
+                }
+                
+                formatted += INDENT.repeat(indent) + line + '\n';
+                
+                if (line.match(/^<\w[^>]*[^\/]>/) && !line.match(/^<\w[^>]*<\/\w[^>]*>$/)) {
+                    indent += 1;
+                }
+            }
+            
+            return formatted.trim();
         }
 
 
@@ -2723,77 +2851,326 @@ text</textarea>
             return result;
         }
 
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function updateCompareInputGutter(textarea, gutter) {
+            const lineCount = Math.max(1, textarea.value.split('\n').length);
+            let numbers = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numbers += i + '\n';
+            }
+            gutter.textContent = numbers;
+            gutter.scrollTop = textarea.scrollTop;
+        }
+
+        function initCompareInputLineNumbers() {
+            const leftTextarea = document.getElementById('compareLeft');
+            const rightTextarea = document.getElementById('compareRight');
+            const leftGutter = document.getElementById('compareLeftGutter');
+            const rightGutter = document.getElementById('compareRightGutter');
+            const leftWrapper = document.getElementById('compareLeftWrapper');
+            const rightWrapper = document.getElementById('compareRightWrapper');
+
+            if (!leftTextarea || !rightTextarea || !leftGutter || !rightGutter) return;
+
+            // Avoid double-binding listeners
+            if (leftTextarea.dataset.lnInit !== '1') {
+                leftTextarea.dataset.lnInit = '1';
+                leftTextarea.addEventListener('input', () => updateCompareInputGutter(leftTextarea, leftGutter));
+                leftTextarea.addEventListener('scroll', () => { leftGutter.scrollTop = leftTextarea.scrollTop; });
+
+                // Allow scrolling when mouse is over the gutter
+                leftGutter.addEventListener('wheel', (e) => {
+                    leftTextarea.scrollTop += e.deltaY;
+                    leftGutter.scrollTop = leftTextarea.scrollTop;
+                    e.preventDefault();
+                }, { passive: false });
+                leftGutter.addEventListener('mousedown', () => leftTextarea.focus());
+
+                if (leftWrapper) {
+                    leftWrapper.addEventListener('wheel', (e) => {
+                        // Let the textarea handle its own scrolling when directly hovered.
+                        if (e.target === leftTextarea) return;
+                        leftTextarea.scrollTop += e.deltaY;
+                        leftGutter.scrollTop = leftTextarea.scrollTop;
+                        e.preventDefault();
+                    }, { passive: false });
+                }
+            }
+
+            if (rightTextarea.dataset.lnInit !== '1') {
+                rightTextarea.dataset.lnInit = '1';
+                rightTextarea.addEventListener('input', () => updateCompareInputGutter(rightTextarea, rightGutter));
+                rightTextarea.addEventListener('scroll', () => { rightGutter.scrollTop = rightTextarea.scrollTop; });
+
+                // Allow scrolling when mouse is over the gutter
+                rightGutter.addEventListener('wheel', (e) => {
+                    rightTextarea.scrollTop += e.deltaY;
+                    rightGutter.scrollTop = rightTextarea.scrollTop;
+                    e.preventDefault();
+                }, { passive: false });
+                rightGutter.addEventListener('mousedown', () => rightTextarea.focus());
+
+                if (rightWrapper) {
+                    rightWrapper.addEventListener('wheel', (e) => {
+                        if (e.target === rightTextarea) return;
+                        rightTextarea.scrollTop += e.deltaY;
+                        rightGutter.scrollTop = rightTextarea.scrollTop;
+                        e.preventDefault();
+                    }, { passive: false });
+                }
+            }
+
+            updateCompareInputGutter(leftTextarea, leftGutter);
+            updateCompareInputGutter(rightTextarea, rightGutter);
+        }
+
+        let diffNavIndices = [];
+        let diffNavPos = -1;
+
+        function resetDiffNavigation() {
+            diffNavIndices = [];
+            diffNavPos = -1;
+            const btn = document.getElementById('nextDiffBtn');
+            if (btn) btn.disabled = true;
+
+            const leftDiff = document.getElementById('diffLeft');
+            const rightDiff = document.getElementById('diffRight');
+            if (leftDiff) leftDiff.querySelectorAll('.diff-line.current-diff').forEach(el => el.classList.remove('current-diff'));
+            if (rightDiff) rightDiff.querySelectorAll('.diff-line.current-diff').forEach(el => el.classList.remove('current-diff'));
+        }
+
+        function initDiffNavigation(diffResult) {
+            diffNavIndices = [];
+            diffNavPos = -1;
+            for (let i = 0; i < diffResult.length; i++) {
+                if (diffResult[i].type !== 'equal') diffNavIndices.push(i);
+            }
+
+            const btn = document.getElementById('nextDiffBtn');
+            if (btn) btn.disabled = diffNavIndices.length === 0;
+        }
+
+        function goToNextDifference() {
+            if (!diffNavIndices || diffNavIndices.length === 0) return;
+
+            diffNavPos = (diffNavPos + 1) % diffNavIndices.length;
+            const targetIndex = diffNavIndices[diffNavPos];
+
+            const leftDiff = document.getElementById('diffLeft');
+            const rightDiff = document.getElementById('diffRight');
+            if (!leftDiff || !rightDiff) return;
+
+            leftDiff.querySelectorAll('.diff-line.current-diff').forEach(el => el.classList.remove('current-diff'));
+            rightDiff.querySelectorAll('.diff-line.current-diff').forEach(el => el.classList.remove('current-diff'));
+
+            const leftLine = leftDiff.children[targetIndex];
+            const rightLine = rightDiff.children[targetIndex];
+            if (!leftLine || !rightLine) return;
+
+            leftLine.classList.add('current-diff');
+            rightLine.classList.add('current-diff');
+
+            leftLine.scrollIntoView({ block: 'center', inline: 'nearest' });
+            rightLine.scrollIntoView({ block: 'center', inline: 'nearest' });
+        }
+
         function updateDiff() {
             const leftText = document.getElementById('compareLeft').value;
             const rightText = document.getElementById('compareRight').value;
-            const diffResult = computeDiff(leftText, rightText);
             
-            // Update left diff view
-            const diffLeft = document.getElementById('diffLeft');
-            diffLeft.innerHTML = '';
-            diffResult.forEach(diff => {
-                const line = document.createElement('div');
-                line.className = `diff-line ${diff.type}`;
+            const leftTextarea = document.getElementById('compareLeft');
+            const rightTextarea = document.getElementById('compareRight');
+            const leftWrapper = document.getElementById('compareLeftWrapper');
+            const rightWrapper = document.getElementById('compareRightWrapper');
+            const leftDiff = document.getElementById('diffLeft');
+            const rightDiff = document.getElementById('diffRight');
+            
+            // If both have content, show diff mode
+            if (leftText.trim() && rightText.trim()) {
+                document.getElementById('compare-panel').dataset.compareMode = 'diff';
+                // Hide textareas, show diff results
+                if (leftWrapper) leftWrapper.style.display = 'none';
+                if (rightWrapper) rightWrapper.style.display = 'none';
+                leftDiff.style.display = 'block';
+                rightDiff.style.display = 'block';
                 
-                // Apply Myers' character-level diff for modified lines
-                let leftContent = diff.leftContent !== undefined ? diff.leftContent : '';
-                if (diff.type === 'modify' && diff.leftContent && diff.rightContent) {
-                    leftContent = computeCharacterDiff(diff.leftContent, diff.rightContent).left;
+                const diffResult = computeDiff(leftText, rightText);
+                initDiffNavigation(diffResult);
+                
+                // Update left diff view
+                leftDiff.innerHTML = '';
+                diffResult.forEach(diff => {
+                    const line = document.createElement('div');
+                    line.className = `diff-line ${diff.type}`;
+                    
+                    let leftContent = diff.leftContent !== undefined ? diff.leftContent : '';
+                    let isCharDiff = false;
+                    if (diff.type === 'modify' && diff.leftContent && diff.rightContent) {
+                        leftContent = computeCharacterDiff(diff.leftContent, diff.rightContent).left;
+                        isCharDiff = true;
+                    }
+                    
+                    line.innerHTML = `
+                        <span class=\"line-number\">${diff.leftLineNumber || ''}</span>
+                        <span class=\"line-content\">${isCharDiff ? leftContent : escapeHtml(leftContent)}</span>
+                    `;
+                    leftDiff.appendChild(line);
+                });
+                
+                // Update right diff view
+                rightDiff.innerHTML = '';
+                diffResult.forEach(diff => {
+                    const line = document.createElement('div');
+                    line.className = `diff-line ${diff.type}`;
+                    
+                    let rightContent = diff.rightContent !== undefined ? diff.rightContent : '';
+                    let isCharDiff = false;
+                    if (diff.type === 'modify' && diff.leftContent && diff.rightContent) {
+                        rightContent = computeCharacterDiff(diff.leftContent, diff.rightContent).right;
+                        isCharDiff = true;
+                    }
+                    
+                    line.innerHTML = `
+                        <span class=\"line-number\">${diff.rightLineNumber || ''}</span>
+                        <span class=\"line-content\">${isCharDiff ? rightContent : escapeHtml(rightContent)}</span>
+                    `;
+                    rightDiff.appendChild(line);
+                });
+                
+                // Update statistics
+                const added = diffResult.filter(d => d.type === 'insert').length;
+                const deleted = diffResult.filter(d => d.type === 'delete').length;
+                const modified = diffResult.filter(d => d.type === 'modify').length;
+                
+                // Detect content types
+                const leftIsJson = isValidJSON(leftText);
+                const rightIsJson = isValidJSON(rightText);
+                const leftIsXml = isValidXML(leftText);
+                const rightIsXml = isValidXML(rightText);
+                
+                let contentTypeInfo = '';
+                if (leftIsJson && rightIsJson) {
+                    contentTypeInfo = '<span class=\"content-type-json\">JSON Content Detected</span>';
+                } else if (leftIsXml && rightIsXml) {
+                    contentTypeInfo = '<span class=\"content-type-xml\">XML Content Detected</span>';
+                } else {
+                    contentTypeInfo = '<span class=\"content-type-text\">Text Content</span>';
                 }
                 
-                line.innerHTML = `
-                    <span class="line-number">${diff.leftLineNumber || ''}</span>
-                    <span class="line-content">${leftContent}</span>
-                `;
-                diffLeft.appendChild(line);
-            });
-            
-            // Update right diff view
-            const diffRight = document.getElementById('diffRight');
-            diffRight.innerHTML = '';
-            diffResult.forEach(diff => {
-                const line = document.createElement('div');
-                line.className = `diff-line ${diff.type}`;
-                
-                // Apply Myers' character-level diff for modified lines
-                let rightContent = diff.rightContent !== undefined ? diff.rightContent : '';
-                if (diff.type === 'modify' && diff.leftContent && diff.rightContent) {
-                    rightContent = computeCharacterDiff(diff.leftContent, diff.rightContent).right;
+                // Build semantic summary if available
+                let semanticSummary = '';
+                if (diffResult.semanticSummary && diffResult.semanticSummary.length > 0) {
+                    semanticSummary = `
+                        <div class=\"semantic-summary\">
+                            <h4>Semantic Changes:</h4>
+                            <ul>
+                                ${diffResult.semanticSummary.map(change => `<li>${change}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
                 }
                 
-                line.innerHTML = `
-                    <span class="line-number">${diff.rightLineNumber || ''}</span>
-                    <span class="line-content">${rightContent}</span>
+                document.getElementById('compareStats').innerHTML = `
+                    ${contentTypeInfo}
+                    <p><strong>Left:</strong> ${leftText.length} chars, ${leftText.split('\\n').length} lines</p>
+                    <p><strong>Right:</strong> ${rightText.length} chars, ${rightText.split('\\n').length} lines</p>
+                    <p><strong>Changes:</strong> 
+                        <span class=\"stat-added\">${added} added</span>, 
+                        <span class=\"stat-deleted\">${deleted} deleted</span>, 
+                        <span class=\"stat-modified\">${modified} modified</span>
+                    </p>
+                    <p><strong>Status:</strong> ${(added === 0 && deleted === 0 && modified === 0) ? '✅ Identical' : '❌ Different'}</p>
+                    ${semanticSummary}
                 `;
-                diffRight.appendChild(line);
-            });
-            
-            // Update statistics
-            const added = diffResult.filter(d => d.type === 'insert').length;
-            const deleted = diffResult.filter(d => d.type === 'delete').length;
-            const modified = diffResult.filter(d => d.type === 'modify').length;
-            
-            document.getElementById('compareStats').innerHTML = `
-                <p><strong>Left:</strong> ${leftText.length} chars, ${leftText.split('\n').length} lines</p>
-                <p><strong>Right:</strong> ${rightText.length} chars, ${rightText.split('\n').length} lines</p>
-                <p><strong>Changes:</strong> 
-                    <span class="stat-added">${added} added</span>, 
-                    <span class="stat-deleted">${deleted} deleted</span>, 
-                    <span class="stat-modified">${modified} modified</span>
-                </p>
-                <p><strong>Status:</strong> ${leftText === rightText ? '✅ Identical' : '❌ Different'}</p>
-            `;
+            } else {
+                document.getElementById('compare-panel').dataset.compareMode = 'input';
+                resetDiffNavigation();
+                // Show input mode - display textareas, hide diff results
+                if (leftWrapper) leftWrapper.style.display = 'flex';
+                if (rightWrapper) rightWrapper.style.display = 'flex';
+                leftDiff.style.display = 'none';
+                rightDiff.style.display = 'none';
+
+                initCompareInputLineNumbers();
+                
+                document.getElementById('compareStats').innerHTML = `
+                    <p>📝 Enter text in both panels to start comparison</p>
+                `;
+            }
         }
 
-        // Initialize diff on page load
+        function clearLeftText() {
+            document.getElementById('compareLeft').value = '';
+            showInputMode();
+        }
+        
+        function clearRightText() {
+            document.getElementById('compareRight').value = '';
+            showInputMode();
+        }
+        
+        function editLeftText() {
+            showInputMode();
+            document.getElementById('compareLeft').focus();
+        }
+        
+        function editRightText() {
+            showInputMode();
+            document.getElementById('compareRight').focus();
+        }
+        
+        function showInputMode() {
+            const leftTextarea = document.getElementById('compareLeft');
+            const rightTextarea = document.getElementById('compareRight');
+            const leftWrapper = document.getElementById('compareLeftWrapper');
+            const rightWrapper = document.getElementById('compareRightWrapper');
+            const leftDiff = document.getElementById('diffLeft');
+            const rightDiff = document.getElementById('diffRight');
+
+            document.getElementById('compare-panel').dataset.compareMode = 'input';
+            
+            if (leftWrapper) leftWrapper.style.display = 'flex';
+            if (rightWrapper) rightWrapper.style.display = 'flex';
+            leftDiff.style.display = 'none';
+            rightDiff.style.display = 'none';
+
+            initCompareInputLineNumbers();
+            
+            document.getElementById('compareStats').innerHTML = `
+                <p>📝 Enter text in both panels and click "Compare" to start comparison</p>
+                <p>Supports: Plain text, JSON, and XML with intelligent formatting</p>
+            `;
+        }
+        
+        function performComparison() {
+            const leftText = document.getElementById('compareLeft').value;
+            const rightText = document.getElementById('compareRight').value;
+            
+            if (!leftText.trim() || !rightText.trim()) {
+                alert('Please enter text in both panels before comparing');
+                return;
+            }
+            
+            updateDiff();
+        }
+
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             renderFileTabs(); // Initialize file tabs
             updateStatus();
-            updateDiff();
+
+            initCompareInputLineNumbers();
             
             // Add event listeners for compare text areas
-            document.getElementById('compareLeft').addEventListener('input', updateDiff);
-            document.getElementById('compareRight').addEventListener('input', updateDiff);
+            // Manual comparison only - use Compare button
             
             // Initialize editor with current file content
             const currentFile = getCurrentFile();
@@ -3141,11 +3518,11 @@ text</textarea>
         function myersDiffToHtml(diff, side) {
             return diff.map(op => {
                 if (op.type === 'match') {
-                    return side === 'left' ? op.leftChar : op.rightChar;
+                    return escapeHtml(side === 'left' ? op.leftChar : op.rightChar);
                 } else if (op.type === 'delete') {
-                    return side === 'left' ? `<span style="background-color: #FFA500;">${op.leftChar}</span>` : '';
+                    return side === 'left' ? `<span style="background-color: #FFA500;">${escapeHtml(op.leftChar)}</span>` : '';
                 } else if (op.type === 'insert') {
-                    return side === 'right' ? `<span style="background-color: #FFA500;">${op.rightChar}</span>` : '';
+                    return side === 'right' ? `<span style="background-color: #FFA500;">${escapeHtml(op.rightChar)}</span>` : '';
                 }
                 return '';
             }).join('');
@@ -3162,8 +3539,227 @@ text</textarea>
 
 
 
-        // Diff functionality
+        // Enhanced Diff functionality with JSON/XML support
         function computeDiff(leftText, rightText) {
+            // Detect if both texts are JSON or XML for specialized comparison
+            const leftIsJson = isValidJSON(leftText);
+            const rightIsJson = isValidJSON(rightText);
+            const leftIsXml = isValidXML(leftText);
+            const rightIsXml = isValidXML(rightText);
+            
+            // Use specialized comparison for structured data
+            if (leftIsJson && rightIsJson) {
+                return computeJsonDiff(leftText, rightText);
+            } else if (leftIsXml && rightIsXml) {
+                return computeXmlDiff(leftText, rightText);
+            } else {
+                // Fall back to line-based diff for other content
+                return computeLineDiff(leftText, rightText);
+            }
+        }
+        
+        function isValidJSON(text) {
+            try {
+                JSON.parse(text.trim());
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        function isValidXML(text) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text.trim(), 'text/xml');
+                return !doc.querySelector('parsererror');
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function sortJsonKeys(value) {
+            if (value === null || value === undefined) return value;
+            if (Array.isArray(value)) return value.map(sortJsonKeys);
+            if (typeof value !== 'object') return value;
+
+            const sorted = {};
+            Object.keys(value)
+                .sort()
+                .forEach(key => {
+                    sorted[key] = sortJsonKeys(value[key]);
+                });
+            return sorted;
+        }
+        
+        function computeJsonDiff(leftText, rightText) {
+            try {
+                // Parse, minify, then pretty print both JSONs for consistent formatting
+                const leftObj = JSON.parse(leftText);
+                const rightObj = JSON.parse(rightText);
+
+                // Canonicalize objects by sorting keys so key order doesn't affect comparison
+                const leftCanonical = sortJsonKeys(leftObj);
+                const rightCanonical = sortJsonKeys(rightObj);
+                
+                // Create consistent formatting: minify first, then pretty print with same settings
+                const leftFormatted = JSON.stringify(leftCanonical, null, 2);
+                const rightFormatted = JSON.stringify(rightCanonical, null, 2);
+                
+                const result = computeLineDiff(leftFormatted, rightFormatted);
+                
+                // Add semantic analysis for JSON differences
+                const semanticDiffs = analyzeJsonDifferences(leftObj, rightObj);
+                if (semanticDiffs.length > 0) {
+                    result.semanticSummary = semanticDiffs;
+                }
+                
+                return result;
+            } catch (e) {
+                // If parsing fails, fall back to line diff
+                return computeLineDiff(leftText, rightText);
+            }
+        }
+        
+        function analyzeJsonDifferences(leftObj, rightObj) {
+            const differences = [];
+            const leftKeys = new Set(Object.keys(flattenObject(leftObj)));
+            const rightKeys = new Set(Object.keys(flattenObject(rightObj)));
+            
+            // Find added keys
+            rightKeys.forEach(key => {
+                if (!leftKeys.has(key)) {
+                    differences.push(`Added property: ${key}`);
+                }
+            });
+            
+            // Find removed keys
+            leftKeys.forEach(key => {
+                if (!rightKeys.has(key)) {
+                    differences.push(`Removed property: ${key}`);
+                }
+            });
+            
+            // Find modified values
+            const leftFlat = flattenObject(leftObj);
+            const rightFlat = flattenObject(rightObj);
+            
+            Object.keys(leftFlat).forEach(key => {
+                if (rightFlat.hasOwnProperty(key) && leftFlat[key] !== rightFlat[key]) {
+                    differences.push(`Modified property: ${key} (${leftFlat[key]} → ${rightFlat[key]})`);
+                }
+            });
+            
+            return differences;
+        }
+        
+        function flattenObject(obj, prefix = '') {
+            const flattened = {};
+            
+            for (const key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    const newKey = prefix ? `${prefix}.${key}` : key;
+                    
+                    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                        Object.assign(flattened, flattenObject(obj[key], newKey));
+                    } else {
+                        flattened[newKey] = obj[key];
+                    }
+                }
+            }
+            
+            return flattened;
+        }
+        
+        function computeXmlDiff(leftText, rightText) {
+            try {
+                // Format both XMLs consistently for proper comparison
+                const leftFormatted = formatXML(leftText);
+                const rightFormatted = formatXML(rightText);
+                
+                const result = computeLineDiff(leftFormatted, rightFormatted);
+                
+                // Add XML-specific analysis
+                const xmlDiffs = analyzeXmlDifferences(leftText, rightText);
+                if (xmlDiffs.length > 0) {
+                    result.semanticSummary = xmlDiffs;
+                }
+                
+                return result;
+            } catch (e) {
+                return computeLineDiff(leftText, rightText);
+            }
+        }
+        
+
+        
+        function analyzeXmlDifferences(leftXml, rightXml) {
+            const differences = [];
+            
+            try {
+                const parser = new DOMParser();
+                const leftDoc = parser.parseFromString(leftXml, 'text/xml');
+                const rightDoc = parser.parseFromString(rightXml, 'text/xml');
+                
+                const leftElements = getAllElements(leftDoc.documentElement);
+                const rightElements = getAllElements(rightDoc.documentElement);
+                
+                // Compare element counts and types
+                const leftTags = leftElements.map(el => el.tagName).sort();
+                const rightTags = rightElements.map(el => el.tagName).sort();
+                
+                const leftTagCounts = countItems(leftTags);
+                const rightTagCounts = countItems(rightTags);
+                
+                Object.keys(rightTagCounts).forEach(tag => {
+                    if (!leftTagCounts[tag]) {
+                        differences.push(`Added element type: <${tag}>`);
+                    } else if (rightTagCounts[tag] > leftTagCounts[tag]) {
+                        differences.push(`Increased ${tag} elements: ${leftTagCounts[tag]} → ${rightTagCounts[tag]}`);
+                    }
+                });
+                
+                Object.keys(leftTagCounts).forEach(tag => {
+                    if (!rightTagCounts[tag]) {
+                        differences.push(`Removed element type: <${tag}>`);
+                    } else if (leftTagCounts[tag] > rightTagCounts[tag]) {
+                        differences.push(`Decreased ${tag} elements: ${leftTagCounts[tag]} → ${rightTagCounts[tag]}`);
+                    }
+                });
+                
+                return differences;
+            } catch (e) {
+                return [];
+            }
+        }
+        
+        function getAllElements(element) {
+            const elements = [];
+            
+            function traverse(node) {
+                if (node.nodeType === 1) { // Element node
+                    elements.push(node);
+                    for (let child of node.children) {
+                        traverse(child);
+                    }
+                }
+            }
+            
+            if (element) {
+                traverse(element);
+            }
+            
+            return elements;
+        }
+        
+        function countItems(items) {
+            const counts = {};
+            items.forEach(item => {
+                counts[item] = (counts[item] || 0) + 1;
+            });
+            return counts;
+        }
+        
+        function computeLineDiff(leftText, rightText) {
             const leftLines = leftText.split('\n');
             const rightLines = rightText.split('\n');
             const result = [];
@@ -3242,7 +3838,7 @@ text</textarea>
             
             return result;
         }
-
+        
     </script>
 
 </body>
