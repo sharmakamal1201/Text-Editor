@@ -571,6 +571,37 @@
             font-size: 13px;
         }
 
+        /* Compare progress (indeterminate) */
+        .compare-progress-label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 8px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .compare-progress-bar {
+            height: 8px;
+            border-radius: 999px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .compare-progress-bar-fill {
+            height: 100%;
+            width: 35%;
+            background-color: var(--accent-color);
+            transform: translateX(-120%);
+            animation: compareIndeterminate 1.1s infinite ease-in-out;
+        }
+
+        @keyframes compareIndeterminate {
+            0% { transform: translateX(-120%); }
+            50% { transform: translateX(120%); }
+            100% { transform: translateX(320%); }
+        }
+
         .stat-added {
             color: #2ea043;
             font-weight: 600;
@@ -1240,7 +1271,7 @@ text</textarea>
                     
                     <!-- Compare Controls -->
                     <div style="text-align: center; padding: 15px; background: var(--bg-secondary); border-top: 1px solid var(--border-color);">
-                        <button onclick="performComparison()" style="padding: 10px 20px; font-size: 14px; font-weight: bold; background: var(--accent-color); color: var(--bg-primary); border: none; border-radius: 6px; cursor: pointer;">Compare</button>
+                        <button id="compareBtn" onclick="performComparison()" style="padding: 10px 20px; font-size: 14px; font-weight: bold; background: var(--accent-color); color: var(--bg-primary); border: none; border-radius: 6px; cursor: pointer;">Compare</button>
                         <button id="nextDiffBtn" onclick="goToNextDifference()" disabled style="padding: 10px 20px; font-size: 14px; font-weight: bold; margin-left: 10px;">Next Difference</button>
                     </div>
                 </div>
@@ -1906,11 +1937,12 @@ text</textarea>
                 alert('Error: Could not find files to compare');
                 return;
             }
-            
+
+            showComparePanel();
             document.getElementById('compareLeft').value = firstFile.content;
             document.getElementById('compareRight').value = currentFile.content;
             initCompareInputLineNumbers();
-            showComparePanel();
+            performComparison();
         }
         
         function closeCurrentFile() {
@@ -2082,11 +2114,13 @@ text</textarea>
                 hideContextMenus();
                 return;
             }
-            
-            document.getElementById('compareLeft').value = firstFile.content;
-            document.getElementById('compareRight').value = secondFile.content;
+
             hideContextMenus();
             showComparePanel();
+            document.getElementById('compareLeft').value = firstFile.content;
+            document.getElementById('compareRight').value = secondFile.content;
+            initCompareInputLineNumbers();
+            performComparison();
         }
 
         function clearCompareSelection() {
@@ -2860,6 +2894,43 @@ text</textarea>
                 .replace(/'/g, "&#039;");
         }
 
+        function countLines(text, { minimumOne = false } = {}) {
+            if (text === null || text === undefined || text.length === 0) {
+                return minimumOne ? 1 : 0;
+            }
+
+            // Normalize Windows (CRLF) and old Mac (CR) newlines to LF.
+            const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const lineBreaks = (normalized.match(/\n/g) || []).length;
+            const lines = lineBreaks + 1;
+            return minimumOne ? Math.max(1, lines) : lines;
+        }
+
+        function setCompareBusy(isBusy) {
+            const compareBtn = document.getElementById('compareBtn');
+            const nextDiffBtn = document.getElementById('nextDiffBtn');
+
+            if (compareBtn) {
+                compareBtn.disabled = isBusy;
+                compareBtn.style.opacity = isBusy ? '0.85' : '';
+                compareBtn.style.cursor = isBusy ? 'wait' : 'pointer';
+            }
+            // Only force-disable Next Difference while busy; once comparison completes,
+            // initDiffNavigation() controls whether it should be enabled.
+            if (nextDiffBtn && isBusy) {
+                nextDiffBtn.disabled = true;
+            }
+        }
+
+        function showCompareProgress() {
+            const stats = document.getElementById('compareStats');
+            if (!stats) return;
+            stats.innerHTML = `
+                <div class="compare-progress-label">Comparing…</div>
+                <div class="compare-progress-bar"><div class="compare-progress-bar-fill"></div></div>
+            `;
+        }
+
         function updateCompareInputGutter(textarea, gutter) {
             const lineCount = Math.max(1, textarea.value.split('\n').length);
             let numbers = '';
@@ -3080,8 +3151,8 @@ text</textarea>
                 
                 document.getElementById('compareStats').innerHTML = `
                     ${contentTypeInfo}
-                    <p><strong>Left:</strong> ${leftText.length} chars, ${leftText.split('\\n').length} lines</p>
-                    <p><strong>Right:</strong> ${rightText.length} chars, ${rightText.split('\\n').length} lines</p>
+                    <p><strong>Left:</strong> ${leftText.length} chars, ${countLines(leftText)} lines</p>
+                    <p><strong>Right:</strong> ${rightText.length} chars, ${countLines(rightText)} lines</p>
                     <p><strong>Changes:</strong> 
                         <span class=\"stat-added\">${added} added</span>, 
                         <span class=\"stat-deleted\">${deleted} deleted</span>, 
@@ -3158,8 +3229,18 @@ text</textarea>
                 alert('Please enter text in both panels before comparing');
                 return;
             }
-            
-            updateDiff();
+
+            // Show progress UI immediately, then run the heavy comparison on the next tick
+            // so the browser can paint the progress bar before computation begins.
+            setCompareBusy(true);
+            showCompareProgress();
+            setTimeout(() => {
+                try {
+                    updateDiff();
+                } finally {
+                    setCompareBusy(false);
+                }
+            }, 0);
         }
 
         // Initialize on page load
