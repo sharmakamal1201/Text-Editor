@@ -2781,84 +2781,170 @@ text</textarea>
         }
 
         function formatXML(xml) {
+            const input = (xml ?? '').toString();
+            const trimmed = input.trim();
+            if (!trimmed) return '';
+
             try {
-                // Parse and normalize the XML using DOM
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(xml.trim(), 'text/xml');
-                
-                // Check for parsing errors
+                const doc = parser.parseFromString(trimmed, 'text/xml');
+
+                // If parsing fails, fall back to token-based formatting.
                 if (doc.querySelector('parsererror')) {
-                    // If parsing fails, fall back to basic formatting
-                    return basicXmlFormat(xml);
+                    return basicXmlFormat(input);
                 }
-                
-                // Serialize back with consistent formatting
-                const serializer = new XMLSerializer();
-                let normalized = serializer.serializeToString(doc);
-                
-                // Apply consistent indentation
-                return formatXmlString(normalized);
-                
+
+                return prettyPrintXmlDocument(doc, {
+                    indent: '  ',
+                    newline: '\n',
+                    // Empty element collapsing is fine and keeps output compact.
+                    collapseEmptyElements: true
+                });
             } catch (e) {
-                // If anything fails, use basic formatting
-                return basicXmlFormat(xml);
+                return basicXmlFormat(input);
             }
         }
-        
-        function formatXmlString(xml) {
-            const INDENT = '  '; // 2 spaces
-            let formatted = '';
-            let indent = 0;
-            
-            // Split by tags
-            const tokens = xml.replace(/></g, '>\n<').split('\n');
-            
-            for (let token of tokens) {
-                token = token.trim();
-                if (!token) continue;
-                
-                // Closing tag - decrease indent first
-                if (token.match(/^<\/\w/)) {
-                    indent = Math.max(0, indent - 1);
+
+        function prettyPrintXmlDocument(doc, { indent = '  ', newline = '\n', collapseEmptyElements = true } = {}) {
+            const escapeText = (value) => (value ?? '').toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            const escapeAttr = (value) => (value ?? '').toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            const serializeAttributes = (el) => {
+                if (!el.attributes || el.attributes.length === 0) return '';
+                let result = '';
+                for (const attr of Array.from(el.attributes)) {
+                    result += ` ${attr.name}="${escapeAttr(attr.value)}"`;
                 }
-                
-                // Add indentation and token
-                formatted += INDENT.repeat(indent) + token + '\n';
-                
-                // Opening tag - increase indent after adding
-                if (token.match(/^<\w[^>]*[^\/]>/) && !token.match(/^<\w[^>]*<\/\w[^>]*>$/)) {
-                    indent += 1;
+                return result;
+            };
+
+            const isMeaningfulText = (node) => node && node.nodeType === Node.TEXT_NODE && node.nodeValue && node.nodeValue.trim() !== '';
+
+            const renderNode = (node, level) => {
+                if (!node) return [];
+
+                // Document node
+                if (node.nodeType === Node.DOCUMENT_NODE) {
+                    const lines = [];
+                    for (const child of Array.from(node.childNodes)) {
+                        lines.push(...renderNode(child, level));
+                    }
+                    return lines;
                 }
-            }
-            
-            return formatted.trim();
+
+                // Processing instruction (e.g., <?xml version="1.0"?>)
+                if (node.nodeType === Node.PROCESSING_INSTRUCTION_NODE) {
+                    const data = node.data ? ` ${node.data}` : '';
+                    return [`${indent.repeat(level)}<?${node.target}${data}?>`];
+                }
+
+                // Comment
+                if (node.nodeType === Node.COMMENT_NODE) {
+                    return [`${indent.repeat(level)}<!--${node.nodeValue ?? ''}-->`];
+                }
+
+                // CDATA
+                if (node.nodeType === Node.CDATA_SECTION_NODE) {
+                    return [`${indent.repeat(level)}<![CDATA[${node.nodeValue ?? ''}]]>`];
+                }
+
+                // Text
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = (node.nodeValue ?? '').toString();
+                    if (text.trim() === '') return [];
+                    return [`${indent.repeat(level)}${escapeText(text.trim())}`];
+                }
+
+                // Element
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const attrs = serializeAttributes(node);
+                    const tagName = node.tagName;
+
+                    const children = Array.from(node.childNodes).filter(child => {
+                        if (child.nodeType === Node.ELEMENT_NODE) return true;
+                        if (child.nodeType === Node.TEXT_NODE) return child.nodeValue && child.nodeValue.trim() !== '';
+                        if (child.nodeType === Node.CDATA_SECTION_NODE) return true;
+                        if (child.nodeType === Node.COMMENT_NODE) return true;
+                        if (child.nodeType === Node.PROCESSING_INSTRUCTION_NODE) return true;
+                        return false;
+                    });
+
+                    if (children.length === 0) {
+                        if (collapseEmptyElements) {
+                            return [`${indent.repeat(level)}<${tagName}${attrs}/>`];
+                        }
+                        return [
+                            `${indent.repeat(level)}<${tagName}${attrs}>`,
+                            `${indent.repeat(level)}</${tagName}>`
+                        ];
+                    }
+
+                    // If it's a simple text-only element, keep it on one line.
+                    if (children.length === 1 && isMeaningfulText(children[0])) {
+                        const textValue = escapeText(children[0].nodeValue.trim());
+                        return [`${indent.repeat(level)}<${tagName}${attrs}>${textValue}</${tagName}>`];
+                    }
+
+                    const lines = [`${indent.repeat(level)}<${tagName}${attrs}>`];
+                    for (const child of children) {
+                        lines.push(...renderNode(child, level + 1));
+                    }
+                    lines.push(`${indent.repeat(level)}</${tagName}>`);
+                    return lines;
+                }
+
+                return [];
+            };
+
+            const lines = renderNode(doc, 0);
+            return lines.join(newline).trim();
         }
         
         function basicXmlFormat(xml) {
             const INDENT = '  ';
-            let formatted = '';
-            let indent = 0;
-            
-            // Basic regex-based formatting as fallback
-            xml = xml.replace(/></g, '>\n<');
-            const lines = xml.split('\n');
-            
-            for (let line of lines) {
-                line = line.trim();
-                if (!line) continue;
-                
-                if (line.match(/^<\/\w/)) {
-                    indent = Math.max(0, indent - 1);
+            const input = (xml ?? '').toString().trim();
+            if (!input) return '';
+
+            // Token-based fallback formatter (no XML semantics, but consistent indentation).
+            // Handles: tags, comments, CDATA, processing instructions, and text.
+            const tokens = input.match(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<\/?[^>]+>|[^<]+/g) || [];
+            const lines = [];
+            let level = 0;
+
+            const isClosingTag = (t) => /^<\//.test(t);
+            const isSelfClosingTag = (t) => /^<[^!?][^>]*\/>$/.test(t);
+            const isDeclarationOrDoctype = (t) => /^<\?/.test(t) || /^<!DOCTYPE/i.test(t);
+            const isCommentOrCdata = (t) => /^<!--/.test(t) || /^<!\[CDATA\[/.test(t);
+            const isOpeningTag = (t) => /^<[^!?\/][^>]*>$/.test(t) && !isSelfClosingTag(t);
+
+            for (let token of tokens) {
+                if (!token) continue;
+                token = token.trim();
+                if (!token) continue;
+
+                if (isClosingTag(token)) {
+                    level = Math.max(0, level - 1);
+                    lines.push(INDENT.repeat(level) + token);
+                    continue;
                 }
-                
-                formatted += INDENT.repeat(indent) + line + '\n';
-                
-                if (line.match(/^<\w[^>]*[^\/]>/) && !line.match(/^<\w[^>]*<\/\w[^>]*>$/)) {
-                    indent += 1;
+
+                lines.push(INDENT.repeat(level) + token);
+
+                // Increase indent after opening tags (but not for self-closing or declarations).
+                if (isOpeningTag(token) && !isDeclarationOrDoctype(token) && !isCommentOrCdata(token)) {
+                    level += 1;
                 }
             }
-            
-            return formatted.trim();
+
+            return lines.join('\n').trim();
         }
 
 
