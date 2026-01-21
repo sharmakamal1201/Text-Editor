@@ -406,6 +406,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+            min-width: 0;
         }
 
         .diff-header {
@@ -419,15 +420,16 @@
 
         .diff-content {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: auto;
+            overflow: auto;
+            scrollbar-gutter: stable both-edges;
             min-height: 150px;
+            min-width: 0;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 13px;
             line-height: 1.4;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            white-space: pre;
+            overflow-wrap: normal;
+            word-wrap: normal;
             border: 1px solid var(--border-color);
             background: var(--bg-secondary);
         }
@@ -535,9 +537,9 @@
         .line-content {
             padding: 2px 12px;
             flex: 1;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            white-space: pre;
+            overflow-wrap: normal;
+            word-wrap: normal;
             min-height: 16px;
         }
 
@@ -637,35 +639,6 @@
             font-weight: 600;
             margin-bottom: 8px;
             display: block;
-        }
-
-        /* Semantic Summary */
-        .semantic-summary {
-            background-color: rgba(97, 218, 251, 0.1);
-            border: 1px solid rgba(97, 218, 251, 0.3);
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 15px;
-        }
-
-        .semantic-summary h4 {
-            color: var(--accent-color);
-            font-size: 13px;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .semantic-summary ul {
-            margin-left: 16px;
-            margin-bottom: 0;
-        }
-
-        .semantic-summary li {
-            color: var(--text-primary);
-            font-size: 12px;
-            line-height: 1.4;
-            margin-bottom: 4px;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         }
 
         /* File Tabs */
@@ -2913,7 +2886,7 @@ text</textarea>
             const input = (xml ?? '').toString().trim();
             if (!input) return '';
 
-            // Token-based fallback formatter (no XML semantics, but consistent indentation).
+            // Token-based fallback formatter (no structural analysis, but consistent indentation).
             // Handles: tags, comments, CDATA, processing instructions, and text.
             const tokens = input.match(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<\/?[^>]+>|[^<]+/g) || [];
             const lines = [];
@@ -3233,6 +3206,9 @@ text</textarea>
                     `;
                     rightDiff.appendChild(line);
                 });
+
+                // Keep left/right scrolling in sync (improves visual alignment)
+                syncDiffScroll(leftDiff, rightDiff);
                 
                 // Update statistics
                 const added = diffResult.filter(d => d.type === 'insert').length;
@@ -3254,19 +3230,6 @@ text</textarea>
                     contentTypeInfo = '<span class=\"content-type-text\">Text Content</span>';
                 }
                 
-                // Build semantic summary if available
-                let semanticSummary = '';
-                if (diffResult.semanticSummary && diffResult.semanticSummary.length > 0) {
-                    semanticSummary = `
-                        <div class=\"semantic-summary\">
-                            <h4>Semantic Changes:</h4>
-                            <ul>
-                                ${diffResult.semanticSummary.map(change => `<li>${change}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
-                
                 document.getElementById('compareStats').innerHTML = `
                     ${contentTypeInfo}
                     <p><strong>Left:</strong> ${leftText.length} chars, ${countLines(leftText)} lines</p>
@@ -3277,7 +3240,6 @@ text</textarea>
                         <span class=\"stat-modified\">${modified} modified</span>
                     </p>
                     <p><strong>Status:</strong> ${(added === 0 && deleted === 0 && modified === 0) ? '✅ Identical' : '❌ Different'}</p>
-                    ${semanticSummary}
                 `;
             } else {
                 document.getElementById('compare-panel').dataset.compareMode = 'input';
@@ -3294,6 +3256,42 @@ text</textarea>
                     <p>📝 Enter text in both panels to start comparison</p>
                 `;
             }
+        }
+
+        function syncDiffScroll(leftEl, rightEl) {
+            if (!leftEl || !rightEl) return;
+
+            // Avoid stacking multiple listeners
+            if (leftEl.__syncScrollCleanup) {
+                leftEl.__syncScrollCleanup();
+            }
+            if (rightEl.__syncScrollCleanup) {
+                rightEl.__syncScrollCleanup();
+            }
+
+            let isSyncing = false;
+
+            const onLeftScroll = () => {
+                if (isSyncing) return;
+                isSyncing = true;
+                rightEl.scrollTop = leftEl.scrollTop;
+                rightEl.scrollLeft = leftEl.scrollLeft;
+                isSyncing = false;
+            };
+
+            const onRightScroll = () => {
+                if (isSyncing) return;
+                isSyncing = true;
+                leftEl.scrollTop = rightEl.scrollTop;
+                leftEl.scrollLeft = rightEl.scrollLeft;
+                isSyncing = false;
+            };
+
+            leftEl.addEventListener('scroll', onLeftScroll);
+            rightEl.addEventListener('scroll', onRightScroll);
+
+            leftEl.__syncScrollCleanup = () => leftEl.removeEventListener('scroll', onLeftScroll);
+            rightEl.__syncScrollCleanup = () => rightEl.removeEventListener('scroll', onRightScroll);
         }
 
         function clearLeftText() {
@@ -3791,69 +3789,11 @@ text</textarea>
                 const leftFormatted = JSON.stringify(leftCanonical, null, 2);
                 const rightFormatted = JSON.stringify(rightCanonical, null, 2);
                 
-                const result = computeLineDiff(leftFormatted, rightFormatted);
-                
-                // Add semantic analysis for JSON differences
-                const semanticDiffs = analyzeJsonDifferences(leftObj, rightObj);
-                if (semanticDiffs.length > 0) {
-                    result.semanticSummary = semanticDiffs;
-                }
-                
-                return result;
+                return computeLineDiff(leftFormatted, rightFormatted);
             } catch (e) {
                 // If parsing fails, fall back to line diff
                 return computeLineDiff(leftText, rightText);
             }
-        }
-        
-        function analyzeJsonDifferences(leftObj, rightObj) {
-            const differences = [];
-            const leftKeys = new Set(Object.keys(flattenObject(leftObj)));
-            const rightKeys = new Set(Object.keys(flattenObject(rightObj)));
-            
-            // Find added keys
-            rightKeys.forEach(key => {
-                if (!leftKeys.has(key)) {
-                    differences.push(`Added property: ${key}`);
-                }
-            });
-            
-            // Find removed keys
-            leftKeys.forEach(key => {
-                if (!rightKeys.has(key)) {
-                    differences.push(`Removed property: ${key}`);
-                }
-            });
-            
-            // Find modified values
-            const leftFlat = flattenObject(leftObj);
-            const rightFlat = flattenObject(rightObj);
-            
-            Object.keys(leftFlat).forEach(key => {
-                if (rightFlat.hasOwnProperty(key) && leftFlat[key] !== rightFlat[key]) {
-                    differences.push(`Modified property: ${key} (${leftFlat[key]} → ${rightFlat[key]})`);
-                }
-            });
-            
-            return differences;
-        }
-        
-        function flattenObject(obj, prefix = '') {
-            const flattened = {};
-            
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    const newKey = prefix ? `${prefix}.${key}` : key;
-                    
-                    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-                        Object.assign(flattened, flattenObject(obj[key], newKey));
-                    } else {
-                        flattened[newKey] = obj[key];
-                    }
-                }
-            }
-            
-            return flattened;
         }
         
         function computeXmlDiff(leftText, rightText) {
@@ -3862,166 +3802,160 @@ text</textarea>
                 const leftFormatted = formatXML(leftText);
                 const rightFormatted = formatXML(rightText);
                 
-                const result = computeLineDiff(leftFormatted, rightFormatted);
-                
-                // Add XML-specific analysis
-                const xmlDiffs = analyzeXmlDifferences(leftText, rightText);
-                if (xmlDiffs.length > 0) {
-                    result.semanticSummary = xmlDiffs;
-                }
-                
-                return result;
+                return computeLineDiff(leftFormatted, rightFormatted);
             } catch (e) {
                 return computeLineDiff(leftText, rightText);
             }
         }
         
+        function myersDiffSequence(leftSeq, rightSeq, equals = (a, b) => a === b) {
+            const N = leftSeq.length;
+            const M = rightSeq.length;
+            const MAX = N + M;
 
-        
-        function analyzeXmlDifferences(leftXml, rightXml) {
-            const differences = [];
-            
-            try {
-                const parser = new DOMParser();
-                const leftDoc = parser.parseFromString(leftXml, 'text/xml');
-                const rightDoc = parser.parseFromString(rightXml, 'text/xml');
-                
-                const leftElements = getAllElements(leftDoc.documentElement);
-                const rightElements = getAllElements(rightDoc.documentElement);
-                
-                // Compare element counts and types
-                const leftTags = leftElements.map(el => el.tagName).sort();
-                const rightTags = rightElements.map(el => el.tagName).sort();
-                
-                const leftTagCounts = countItems(leftTags);
-                const rightTagCounts = countItems(rightTags);
-                
-                Object.keys(rightTagCounts).forEach(tag => {
-                    if (!leftTagCounts[tag]) {
-                        differences.push(`Added element type: <${tag}>`);
-                    } else if (rightTagCounts[tag] > leftTagCounts[tag]) {
-                        differences.push(`Increased ${tag} elements: ${leftTagCounts[tag]} → ${rightTagCounts[tag]}`);
+            const traces = [];
+            const V = {};
+            V[1] = 0;
+
+            for (let D = 0; D <= MAX; D++) {
+                traces.push({ ...V });
+
+                for (let k = -D; k <= D; k += 2) {
+                    let x;
+                    if (k === -D || (k !== D && V[k - 1] < V[k + 1])) {
+                        x = V[k + 1];
+                    } else {
+                        x = V[k - 1] + 1;
                     }
-                });
-                
-                Object.keys(leftTagCounts).forEach(tag => {
-                    if (!rightTagCounts[tag]) {
-                        differences.push(`Removed element type: <${tag}>`);
-                    } else if (leftTagCounts[tag] > rightTagCounts[tag]) {
-                        differences.push(`Decreased ${tag} elements: ${leftTagCounts[tag]} → ${rightTagCounts[tag]}`);
+
+                    let y = x - k;
+
+                    while (x < N && y < M && equals(leftSeq[x], rightSeq[y])) {
+                        x++;
+                        y++;
                     }
-                });
-                
-                return differences;
-            } catch (e) {
-                return [];
-            }
-        }
-        
-        function getAllElements(element) {
-            const elements = [];
-            
-            function traverse(node) {
-                if (node.nodeType === 1) { // Element node
-                    elements.push(node);
-                    for (let child of node.children) {
-                        traverse(child);
+
+                    V[k] = x;
+                    if (x >= N && y >= M) {
+                        return buildSequenceDiff(leftSeq, rightSeq, traces, D);
                     }
                 }
             }
-            
-            if (element) {
-                traverse(element);
+
+            return buildSequenceDiff(leftSeq, rightSeq, traces, MAX);
+        }
+
+        function buildSequenceDiff(leftSeq, rightSeq, traces, D) {
+            const result = [];
+            let x = leftSeq.length;
+            let y = rightSeq.length;
+
+            for (let d = D; d >= 0; d--) {
+                const V = traces[d];
+                const k = x - y;
+
+                let prevK;
+                if (k === -d || (k !== d && V[k - 1] < V[k + 1])) {
+                    prevK = k + 1;
+                } else {
+                    prevK = k - 1;
+                }
+
+                const prevX = V[prevK];
+                const prevY = prevX - prevK;
+
+                while (x > prevX && y > prevY) {
+                    result.unshift({ type: 'match', leftItem: leftSeq[x - 1], rightItem: rightSeq[y - 1] });
+                    x--;
+                    y--;
+                }
+
+                if (d > 0) {
+                    if (x > prevX) {
+                        result.unshift({ type: 'delete', leftItem: leftSeq[x - 1] });
+                        x--;
+                    } else {
+                        result.unshift({ type: 'insert', rightItem: rightSeq[y - 1] });
+                        y--;
+                    }
+                }
             }
-            
-            return elements;
+
+            return result;
         }
-        
-        function countItems(items) {
-            const counts = {};
-            items.forEach(item => {
-                counts[item] = (counts[item] || 0) + 1;
-            });
-            return counts;
-        }
-        
+
         function computeLineDiff(leftText, rightText) {
             const leftLines = leftText.split('\n');
             const rightLines = rightText.split('\n');
+
+            const ops = myersDiffSequence(leftLines, rightLines);
             const result = [];
-            
-            let leftIndex = 0;
-            let rightIndex = 0;
-            
-            while (leftIndex < leftLines.length || rightIndex < rightLines.length) {
-                const leftLine = leftLines[leftIndex];
-                const rightLine = rightLines[rightIndex];
-                
-                if (leftIndex >= leftLines.length) {
-                    result.push({
-                        type: 'insert',
-                        rightContent: rightLine,
-                        rightLineNumber: rightIndex + 1
-                    });
-                    rightIndex++;
-                } else if (rightIndex >= rightLines.length) {
-                    result.push({
-                        type: 'delete',
-                        leftContent: leftLine,
-                        leftLineNumber: leftIndex + 1
-                    });
-                    leftIndex++;
-                } else if (leftLine === rightLine) {
+
+            let leftLineNumber = 1;
+            let rightLineNumber = 1;
+
+            for (let i = 0; i < ops.length; i++) {
+                const op = ops[i];
+
+                if (op.type === 'match') {
                     result.push({
                         type: 'equal',
-                        leftContent: leftLine,
-                        rightContent: rightLine,
-                        leftLineNumber: leftIndex + 1,
-                        rightLineNumber: rightIndex + 1
+                        leftContent: op.leftItem,
+                        rightContent: op.rightItem,
+                        leftLineNumber,
+                        rightLineNumber
                     });
-                    leftIndex++;
-                    rightIndex++;
-                } else {
-                    let foundLeftInRight = -1;
-                    let foundRightInLeft = -1;
-                    
-                    for (let i = 1; i <= Math.min(5, Math.max(leftLines.length - leftIndex, rightLines.length - rightIndex)); i++) {
-                        if (foundLeftInRight === -1 && rightIndex + i < rightLines.length && leftLine === rightLines[rightIndex + i]) {
-                            foundLeftInRight = i;
-                        }
-                        if (foundRightInLeft === -1 && leftIndex + i < leftLines.length && rightLine === leftLines[leftIndex + i]) {
-                            foundRightInLeft = i;
-                        }
+                    leftLineNumber++;
+                    rightLineNumber++;
+                    continue;
+                }
+
+                // Coalesce runs of deletes/inserts to produce cleaner modify blocks
+                if (op.type === 'delete' || op.type === 'insert') {
+                    const deletes = [];
+                    const inserts = [];
+
+                    while (i < ops.length && (ops[i].type === 'delete' || ops[i].type === 'insert')) {
+                        if (ops[i].type === 'delete') deletes.push(ops[i].leftItem);
+                        else inserts.push(ops[i].rightItem);
+                        i++;
                     }
-                    
-                    if (foundLeftInRight === 1 && foundRightInLeft === -1) {
-                        result.push({
-                            type: 'insert',
-                            rightContent: rightLine,
-                            rightLineNumber: rightIndex + 1
-                        });
-                        rightIndex++;
-                    } else if (foundRightInLeft === 1 && foundLeftInRight === -1) {
-                        result.push({
-                            type: 'delete',
-                            leftContent: leftLine,
-                            leftLineNumber: leftIndex + 1
-                        });
-                        leftIndex++;
-                    } else {
-                        result.push({
-                            type: 'modify',
-                            leftContent: leftLine,
-                            rightContent: rightLine,
-                            leftLineNumber: leftIndex + 1,
-                            rightLineNumber: rightIndex + 1
-                        });
-                        leftIndex++;
-                        rightIndex++;
+                    i--; // compensate for loop increment
+
+                    const maxLen = Math.max(deletes.length, inserts.length);
+                    for (let j = 0; j < maxLen; j++) {
+                        const hasDelete = j < deletes.length;
+                        const hasInsert = j < inserts.length;
+
+                        if (hasDelete && hasInsert) {
+                            result.push({
+                                type: 'modify',
+                                leftContent: deletes[j],
+                                rightContent: inserts[j],
+                                leftLineNumber,
+                                rightLineNumber
+                            });
+                            leftLineNumber++;
+                            rightLineNumber++;
+                        } else if (hasDelete) {
+                            result.push({
+                                type: 'delete',
+                                leftContent: deletes[j],
+                                leftLineNumber
+                            });
+                            leftLineNumber++;
+                        } else {
+                            result.push({
+                                type: 'insert',
+                                rightContent: inserts[j],
+                                rightLineNumber
+                            });
+                            rightLineNumber++;
+                        }
                     }
                 }
             }
-            
+
             return result;
         }
         

@@ -2343,7 +2343,7 @@
                     // For freehand shapes, check if point is near any part of the path
                     if (shape.path && shape.path.length > 1) {
                         // Adjust tolerance based on zoom level for consistent selection experience
-                        const tolerance = 20 / zoomLevel;
+                        const tolerance = 5 / zoomLevel;
                         for (let j = 0; j < shape.path.length - 1; j++) {
                             const distance = distanceFromPointToLine(
                                 x, y, 
@@ -2358,7 +2358,7 @@
                 } else if (ONE_D_SHAPES.includes(shape.type)) {
                     // For lines/arrows, create a bounding box with larger padding for easier selection
                     // Adjust tolerance based on zoom level
-                    const tolerance = 25 / zoomLevel;
+                    const tolerance = 10 / zoomLevel;
                     const minX = Math.min(shape.x, shape.width) - tolerance;
                     const maxX = Math.max(shape.x, shape.width) + tolerance;
                     const minY = Math.min(shape.y, shape.height) - tolerance;
